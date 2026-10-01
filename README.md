@@ -65,6 +65,29 @@ Skills the agent may use come from your skills file (`## Skills` and `## Adjacen
 [template format](docs/TEMPLATE_FORMAT.md)). If you do not set one, `skills.md` in your templates folder is used,
 and created from your template if that file does not exist.
 
+## Job scan routine
+
+Career Tailor can scan job boards twice a day by itself: it collects the postings that are new since the last scan,
+an agent reads each one and judges eligibility and fit against your profile, the matches are tailored (Auto
+template), and a report lands in `reports/` next to your runs folder (`scan-<date>-<slot>.md`) with a Windows
+notification.
+
+- Turn it on: tray icon → **Routine settings…** opens `routine.json`. Set `"enabled": true` and write your
+  `profile` (school, graduation date, class standing, work authorization, target roles, locations). The screener
+  judges eligibility from it, so be specific.
+- When: `slots` are time windows (default 11:45–14:30 and 18:00–21:00). Each runs once a day, at the first check
+  inside its window, so a laptop that was asleep at noon still scans when it wakes. Postings are never skipped:
+  each scan covers everything since the previous one (up to 2 days back).
+- Where from: `sources`. `listings-json` (SimplifyJobs-style repos, filtered by posting date), `markdown` (any
+  README with `| [Name](link) | ... |` tables; new = links it hasn't seen, the first scan only records a baseline),
+  `earlycareerradar`, plus `web_search` (an agent searches for recent postings the boards missed).
+- Limits: `max_candidates` (screened per scan), `max_tailor`, `min_fit` (1–5).
+- With the routine on, Career Tailor starts at login (in the tray, no window) and closing the window keeps it
+  running. Clicking the shortcut again opens the window. Stop it from Task Manager, or set `"startup": false`.
+
+The routine runs your agent unattended with web access (WebFetch, WebSearch) and the same tools a manual run uses,
+so each scan uses agent credits: about one call per 5 postings screened, plus one per tailored resume.
+
 ## Settings
 
 | Setting | Default | Notes |

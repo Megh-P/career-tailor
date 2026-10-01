@@ -9,6 +9,7 @@ import {
   BACKEND, DOCS_URL, PY_ENV, getSettings, installTectonic, knownTemplates, lastJson, loadSettings, preflight, py,
   saveSettings, scanTemplates, skillsPath, watchTemplates,
 } from './setup'
+import { startRoutine } from './routine'
 
 // Dev/test only: point userData and Documents at a scratch folder so a test launch never touches real settings.
 if (process.env['CAREER_TAILOR_HOME']) {
@@ -249,10 +250,29 @@ ipcMain.handle('templates:list', (_e, rescan?: boolean) => (rescan || !knownTemp
 ipcMain.handle('preflight', () => preflight())
 ipcMain.handle('tectonic:install', () => installTectonic((l) => win?.webContents.send('tectonic:progress', l)))
 
+// One process: launching again (shortcut, Start menu) shows the window of the one already running in the tray.
+if (!app.requestSingleInstanceLock()) app.quit()
+app.on('second-instance', () => showWindow())
+app.setAppUserModelId('com.danmano411.careertailor') // Windows toasts need it to match the installed app id
+
 app.whenReady().then(() => {
   loadSettings()
   watchTemplates((t) => win?.webContents.send('templates:changed', t))
   Menu.setApplicationMenu(null)
+  startRoutine(showWindow, changed)
+  // started at login: stay in the tray; the scan routine runs without a window
+  if (!process.argv.includes('--background')) showWindow()
+})
+// Closing the window keeps the app (and its scan routine) running in the tray. Ending it: Task Manager.
+app.on('window-all-closed', () => {})
+
+function showWindow() {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.show()
+    win.focus()
+    return
+  }
   win = new BrowserWindow({
     title: 'Career Tailor',
     width: 1280,
@@ -264,9 +284,9 @@ app.whenReady().then(() => {
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true },
   })
   win.once('ready-to-show', () => win?.show())
+  win.on('closed', () => (win = null)) // free the renderer while hidden; reopening rebuilds it
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   if (process.env['ELECTRON_RENDERER_URL']) win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   else win.loadFile(join(__dirname, '../renderer/index.html'))
-})
-app.on('window-all-closed', () => app.quit())
+}
 
