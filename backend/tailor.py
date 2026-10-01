@@ -8,7 +8,7 @@
 Prints the run record as JSON on the last stdout line and writes it to <work-dir>/<date>-<company>-<role>/run.json.
 Exit 1 on failure (the record has "error"). The pasted job description is untrusted data for the agent.
 """
-import argparse, datetime, json, os, pathlib, re, shutil, subprocess, sys, uuid
+import argparse, datetime, json, os, pathlib, re, shutil, subprocess, sys, time, uuid
 
 BACKEND = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND))
@@ -160,11 +160,19 @@ def run(a):
         shutil.copyfile(pdf, dest)
         rec.update(status="done", output=str(dest), pdf=str(pdf), error="")
         # rename the job dir to <date>-<company>-<role> now that the agent has named them
+        # Cosmetic, so best-effort: on Windows a just-finished agent process or an antivirus/indexer scan can still
+        # hold the folder for a moment. Retry briefly; if it stays locked, keep the id-named folder. The run is done.
         final = work / f"{today}-{slug(res['company'])}-{slug(res['role'])}"
         if final != job and not final.exists():
-            job.rename(final)
-            rec.update(folder=str(final), pdf=str(final / pdf.name))
-            job = final
+            for wait in (0, 1, 2, 4):
+                time.sleep(wait)
+                try:
+                    job.rename(final)
+                except OSError:
+                    continue
+                rec.update(folder=str(final), pdf=str(final / pdf.name))
+                job = final
+                break
     except Exception as ex:  # validation, timeout, bad JSON, missing PDF; agent output is in <job>/agent.log
         rec.update(status="failed", error=f"{type(ex).__name__}: {ex}"[:1500] if not isinstance(ex, ValueError) else str(ex)[:1500])
     rec["finished"] = datetime.datetime.now().isoformat(timespec="seconds")
