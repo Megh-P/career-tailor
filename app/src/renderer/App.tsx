@@ -91,6 +91,7 @@ export function App() {
 }
 
 const LAST = 'ct.template'
+const AUTO = 'auto' // tailor.py --template auto: the agent picks the template
 const RANK = { valid: 0, warnings: 1, invalid: 2 }
 const remembered = () => { try { return localStorage.getItem(LAST) } catch { return null } }
 
@@ -103,7 +104,8 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
   useEffect(() => ref.current?.focus(), [])
 
   const usable = templates?.filter((t) => t.status !== 'invalid').sort((a, b) => RANK[a.status] - RANK[b.status]) ?? []
-  const template = usable.find((t) => t.path === pick) ?? usable[0]
+  const auto = pick === AUTO && usable.length > 1 // auto needs something to choose between
+  const template = auto ? { path: AUTO } : usable.find((t) => t.path === pick) ?? usable[0]
   const choose = (p: string) => { setPick(p); try { localStorage.setItem(LAST, p) } catch { /* private mode */ } }
 
   const words = jd.trim() ? jd.trim().split(/\s+/).length : 0
@@ -151,6 +153,16 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
               </div>
             ) : (
               <div className="tpl-list" role="radiogroup" aria-labelledby="tpl-label">
+                {usable.length > 1 && (
+                  <button role="radio" aria-checked={auto} className={`tpl tpl-auto ${auto ? 'on' : ''}`} onClick={() => choose(AUTO)}
+                    title="An extra agent call reads the posting and picks the best-fitting template">
+                    <span className="tpl-icon" aria-hidden="true"><Icon name="wand" size={17} /></span>
+                    <span className="tpl-text">
+                      <span className="tpl-name">Auto</span>
+                      <span className="tpl-file">Picks the best template for the posting</span>
+                    </span>
+                  </button>
+                )}
                 {[...templates].sort((a, b) => RANK[a.status] - RANK[b.status]).map((t) => {
                   const on = t.path === template?.path
                   const bad = t.status === 'invalid'

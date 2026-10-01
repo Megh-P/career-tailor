@@ -53,6 +53,9 @@ export interface Run {
   /** first line of the pasted JD, for live runs before the company is known */
   title?: string
   hasSnapshot?: boolean
+  /** auto mode: the agent picked `template`, for this reason */
+  auto?: boolean
+  auto_reason?: string
 }
 
 /** `resume.py ats` JSON */

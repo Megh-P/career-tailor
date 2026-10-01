@@ -53,7 +53,9 @@ macOS and Linux: no prebuilt binary yet, [build from source](#build-from-source)
 
 ## Usage
 
-1. Pick a valid template (the status shows a check, warnings, or errors).
+1. Pick a valid template (the status shows a check, warnings, or errors), or pick **Auto**: with two or more
+   templates, one extra agent call reads the posting and chooses the best fit (e.g. an ML role at a self-driving
+   company goes to your ML template, a SLAM role to your robotics one). The run page shows what it picked and why.
 2. Paste the job description and press Ctrl+Enter, or click Tailor resume. Up to 3 runs go at once.
 3. When a run finishes, open it for the diff: integrity badge, added/dropped/reordered skills, adjacent and gap
    skills, the line diff against your template, job keywords, and the agent's notes.

@@ -89,7 +89,7 @@ function pump() {
   const args = [
     join(BACKEND, 'tailor.py'), '--template', run.template, '--jd-file', jdPath, '--work-dir', s.runsDir,
     '--out-dir', s.outputDir, '--skills', skillsPath(), '--agent', s.agent, '--model', s.model, '--id', id,
-    '--name-format', s.nameFormat,
+    '--name-format', s.nameFormat, '--templates-dir', s.templatesDir,
   ]
   const child = spawn(s.python, args, { cwd: BACKEND, env: PY_ENV, windowsHide: true })
   let stdout = ''
@@ -114,9 +114,13 @@ function pump() {
 }
 
 function tailor(template: string, jd: string): string {
-  const t = knownTemplates().find((x) => x.path === template)
-  if (!t) throw new Error('Pick a template from the templates folder.')
-  if (t.status === 'invalid') throw new Error(`${t.file} is not a valid template: ${t.errors[0] ?? ''}`)
+  if (template === 'auto') {
+    if (knownTemplates().filter((x) => x.status !== 'invalid').length < 2) throw new Error('Auto needs at least two valid templates.')
+  } else {
+    const t = knownTemplates().find((x) => x.path === template)
+    if (!t) throw new Error('Pick a template from the templates folder.')
+    if (t.status === 'invalid') throw new Error(`${t.file} is not a valid template: ${t.errors[0] ?? ''}`)
+  }
   if (!jd.trim()) throw new Error('Empty job description.')
   const id = randomBytes(4).toString('hex')
   mkdirSync(inbox(), { recursive: true })

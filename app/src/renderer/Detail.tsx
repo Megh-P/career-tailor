@@ -23,7 +23,7 @@ export function RunDetail({ run }: { run: Run }) {
         <div className="detail-title">
           <div className="eyebrow">
             <StatusPill r={run} />
-            <span className="tag tag-lg" title={run.template}>{templateName(run.template)}</span>
+            <span className="tag tag-lg" title={run.template}>{run.auto && <Icon name="wand" size={12} />}{templateName(run.template)}</span>
           </div>
           <h1>{run.company || run.title || 'Untitled posting'}</h1>
           {run.role && <p className="role">{run.role}</p>}
@@ -32,6 +32,7 @@ export function RunDetail({ run }: { run: Run }) {
             {run.finished && <> <Icon name="arrow" size={12} /> {when(run.finished)} · took {elapsed(run.started, run.finished)}</>}
             <span className="mono dim">{run.started ? '· ' : 'run '}{run.id}</span>
           </p>
+          {run.auto && <p className="auto-note"><Icon name="wand" size={13} />Auto picked <b>{templateName(run.template)}</b>{run.auto_reason ? `: ${run.auto_reason}` : ''}</p>}
         </div>
         <div className="actions">
           <button className="btn btn-primary" disabled={!run.output && !run.pdf && !run.folder} onClick={() => open('pdf')}><Icon name="file" />Open PDF</button>
