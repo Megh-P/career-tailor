@@ -3,7 +3,7 @@ import { spawn } from 'child_process'
 import { randomBytes } from 'crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { isAbsolute, join } from 'path'
+import { basename, dirname, isAbsolute, join } from 'path'
 import type { Ats, Detail, OpenTarget, Run, Settings } from '../shared/types'
 import {
   BACKEND, DOCS_URL, PY_ENV, getSettings, installTectonic, knownTemplates, lastJson, loadSettings, preflight, py,
@@ -33,7 +33,20 @@ const readText = (p: string): string | null => {
   try { return readFileSync(p, 'utf-8').replace(/\r\n/g, '\n') } catch { return null }
 }
 const ls = (d: string) => { try { return readdirSync(d) } catch { return [] } }
-const folderOf = (r: Run) => (r.folder ? (isAbsolute(r.folder) ? r.folder : join(runs(), r.folder)) : null)
+/** A run's folder. Older records store it relative to the project ("jobs/<name>"), so fall back to <runs>/<name>. */
+const folderOf = (r: Run) => {
+  if (!r.folder) return null
+  if (isAbsolute(r.folder)) return r.folder
+  const direct = join(runs(), r.folder)
+  return existsSync(direct) ? direct : join(runs(), basename(r.folder))
+}
+/** A run's template file. Older records store just an id ("swe"): look for <templates>/<id>.md. */
+const templateOf = (r: Run) => {
+  if (r.template && existsSync(r.template)) return r.template
+  const dir = getSettings().templatesDir
+  const name = basename(r.template || '').replace(/\.md$/i, '')
+  return name ? join(dir, `${name}.md`) : ''
+}
 
 /** Every run record on disk: <runs>/<folder>/run.json and <runs>/_inbox/<id>.json, deduped by id (folder wins). */
 function history(): Map<string, Rec> {
@@ -145,7 +158,7 @@ async function detail(id: string): Promise<Detail> {
   if (!r) throw new Error(`run ${id} not found`)
   const folder = folderOf(r)
   const resumePath = folder && join(folder, 'resume.md')
-  let templatePath = r.template
+  let templatePath = templateOf(r)
   if (r.template_snapshot) {
     templatePath = join(tmpdir(), `career-tailor-${id}-template.md`)
     writeFileSync(templatePath, r.template_snapshot, 'utf-8')
@@ -164,6 +177,19 @@ async function detail(id: string): Promise<Detail> {
   }
 }
 
+/** The run's PDF in the output folder. If it's missing (deleted, moved, older run), compile it from the run's
+ *  resume.md with render.py, so opening always gives a submittable PDF. */
+async function ensurePdf(r: Run, folder: string | null): Promise<string | null> {
+  const out = r.output || (r.pdf && existsSync(r.pdf) ? r.pdf : '')
+  if (out && existsSync(out)) return out
+  const md = folder ? join(folder, 'resume.md') : ''
+  if (!md || !existsSync(md)) return null
+  const target = out || join(getSettings().outputDir, `${basename(folder!)}.pdf`)
+  mkdirSync(dirname(target), { recursive: true })
+  const res = await py('render.py', [md, target])
+  return existsSync(target) ? target : (console.error(res.stdout, res.stderr), null)
+}
+
 async function openPath(p: string): Promise<string> {
   if (!p || !existsSync(p)) return `Not found: ${p || '(empty path)'}`
   return shell.openPath(p)
@@ -178,8 +204,13 @@ async function open(target: OpenTarget, id?: string): Promise<string> {
   const r = id ? find(id) : undefined
   if (!r) return 'Run not found.'
   const folder = folderOf(r)
-  if (target === 'pdf') return openPath(r.output || r.pdf || '')
-  if (target === 'folder') return openPath(folder ?? '')
+  if (target === 'pdf' || target === 'folder') {
+    const pdf = await ensurePdf(r, folder)
+    if (!pdf) return 'No PDF for this run, and no resume.md to compile one from.'
+    if (target === 'pdf') return openPath(pdf)
+    shell.showItemInFolder(pdf) // the folder you submit from: PDFs, not the run's markdown
+    return ''
+  }
   // log: the agent's log in the run folder, else the app's capture of tailor.py's output
   const agentLog = folder ? join(folder, 'agent.log') : ''
   return openPath(agentLog && existsSync(agentLog) ? agentLog : join(inbox(), `${r.id}.log`))

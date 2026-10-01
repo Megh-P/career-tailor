@@ -34,8 +34,8 @@ export function RunDetail({ run }: { run: Run }) {
           </p>
         </div>
         <div className="actions">
-          <button className="btn btn-primary" disabled={!run.output && !run.pdf} onClick={() => open('pdf')}><Icon name="file" />Open PDF</button>
-          <button className="btn" disabled={!run.folder} onClick={() => open('folder')}><Icon name="folder" />Run folder</button>
+          <button className="btn btn-primary" disabled={!run.output && !run.pdf && !run.folder} onClick={() => open('pdf')}><Icon name="file" />Open PDF</button>
+          <button className="btn" disabled={!run.output && !run.pdf && !run.folder} onClick={() => open('folder')} title="Opens the output folder with this PDF selected"><Icon name="folder" />Show in folder</button>
           <button className="btn" onClick={() => window.api.open('output')}><Icon name="folder" />Output folder</button>
         </div>
       </header>
