@@ -2,7 +2,7 @@
 import { app } from 'electron'
 import { spawn } from 'child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from 'fs'
-import { join, resolve } from 'path'
+import { dirname, join, resolve } from 'path'
 import type { Check, Settings, TemplateInfo } from '../shared/types'
 
 // dev: <repo>/app/out/main -> <repo>/backend; packaged: resources/backend (electron-builder extraResources)
@@ -116,16 +116,38 @@ const tail = (s: string) => s.trim().split(/\r?\n/).slice(-6).join('\n')
 const cache = new Map<string, { mtime: number; info: TemplateInfo }>()
 let latest: TemplateInfo[] = []
 
+// Display title + icon per template. templates.json in the templates folder wins, e.g.
+// { "pm.md": { "title": "Product Management", "icon": "briefcase" } }; otherwise guessed from file-name words.
+const GUESS: [RegExp, string, string][] = [
+  [/\b(swe|sde|software|backend|frontend|fullstack|full-stack|web)\b/, 'Software Engineering', 'code'],
+  [/\b(ml|ai|machine|learning|data|ds|analytics)\b/, 'Machine Learning / Data', 'sparkles'],
+  [/\b(pm|apm|product)\b/, 'Product Management', 'briefcase'],
+  [/\b(av|autonomous|robotics|robot|self-driving|vehicles?)\b/, 'Autonomous Vehicles', 'car'],
+  [/\b(quant|finance|trading)\b/, 'Quantitative / Finance', 'chart'],
+  [/\b(research|phd|lab)\b/, 'Research', 'flask'],
+  [/\b(design|ux|ui)\b/, 'Design', 'pen'],
+]
+function describe(dir: string, file: string): { title: string; icon: string } {
+  try {
+    const meta = JSON.parse(readFileSync(join(dir, 'templates.json'), 'utf-8'))?.[file]
+    if (meta?.title) return { title: String(meta.title), icon: String(meta.icon || 'file') }
+  } catch { /* no or invalid templates.json: guess */ }
+  const words = file.replace(/\.md$/i, '').toLowerCase().replace(/[_.]+/g, ' ').replace(/-/g, ' ')
+  const hit = GUESS.find(([re]) => re.test(words))
+  if (hit) return { title: hit[1], icon: hit[2] }
+  return { title: words.replace(/\b\w/g, (c) => c.toUpperCase()), icon: 'file' }
+}
+
 async function validate(path: string, file: string): Promise<TemplateInfo> {
   const mtime = statSync(path).mtimeMs
   const hit = cache.get(path)
-  if (hit && hit.mtime === mtime) return hit.info
+  if (hit && hit.mtime === mtime) return { ...hit.info, ...describe(dirname(path), file) } // templates.json may have changed
   const r = await py('resume.py', ['validate', path])
   const j = lastJson<{ ok: boolean; errors?: string[]; warnings?: string[]; name?: string }>(r.stdout)
   const errors = j ? j.errors ?? [] : [tail(r.stderr || r.stdout) || `resume.py validate exited with code ${r.code}`]
   const warnings = j?.warnings ?? []
   const info: TemplateInfo = {
-    path, file, errors, warnings,
+    path, file, errors, warnings, ...describe(dirname(path), file),
     name: file.replace(/\.md$/i, ''), // file name, not the person's name: one person usually has several templates
     status: !j?.ok || errors.length ? 'invalid' : warnings.length ? 'warnings' : 'valid',
   }
@@ -140,7 +162,7 @@ export async function scanTemplates(): Promise<TemplateInfo[]> {
   let files: string[] = []
   try { files = readdirSync(dir).filter((f) => /\.md$/i.test(f) && f.toLowerCase() !== 'skills.md').sort() } catch { /* missing dir: empty */ }
   const out = await Promise.all(files.map((f) => validate(join(dir, f), f).catch((e) => ({
-    path: join(dir, f), file: f, name: f, status: 'invalid' as const, errors: [String(e?.message ?? e)], warnings: [],
+    path: join(dir, f), file: f, name: f, ...describe(dir, f), status: 'invalid' as const, errors: [String(e?.message ?? e)], warnings: [],
   }))))
   if (n === seq) latest = out // a newer scan started meanwhile: let it win
   return latest

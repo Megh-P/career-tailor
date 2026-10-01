@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Check, Run, TemplateInfo } from '../shared/types'
 import { RunDetail } from './Detail'
 import { SettingsView, SetupView, StatusBadge, TemplatesView } from './Views'
-import { Icon, PageHead, elapsed, errText, runTitle, templateName, when, type IconName } from './ui'
+import { Icon, PageHead, elapsed, errText, runTitle, templateName, tplIcon, when, type IconName } from './ui'
 
 type View = 'compose' | 'templates' | 'settings' | 'setup' | { run: string }
 
@@ -158,9 +158,9 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
                     <button key={t.path} role="radio" aria-checked={on} disabled={bad}
                       className={`tpl ${on ? 'on' : ''}`} onClick={() => choose(t.path)}
                       title={bad ? `Invalid: ${t.errors[0] ?? ''}` : t.path}>
-                      <span className="radio" aria-hidden="true" />
+                      <span className="tpl-icon" aria-hidden="true"><Icon name={tplIcon(t.icon)} size={17} /></span>
                       <span className="tpl-text">
-                        <span className="tpl-name">{t.name}</span>
+                        <span className="tpl-name">{t.title}</span>
                         <span className="tpl-file mono">{t.file}</span>
                       </span>
                       {t.status !== 'valid' && <StatusBadge t={t} />}

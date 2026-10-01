@@ -133,5 +133,10 @@ were unsure about so I can check it against my original.
 - Put the strongest keywords for your target roles in Technical Skills; the agent reorders them to match each posting.
 - Bullets around 150 to 220 characters read well; bold only the key numbers.
 - Review the diff in the run detail view before sending any resume.
+- Card names and icons are guessed from the file name (`swe.md` shows as Software Engineering with a code icon;
+  `pm`, `ml`/`data`, `av`/`robotics`, `quant`, `research`, `design` are recognized too). To set your own, add a
+  `templates.json` next to your templates:
+  `{ "swe.md": { "title": "Backend Engineering", "icon": "code" } }`. Icons: `code`, `sparkles`, `briefcase`, `car`,
+  `chart`, `flask`, `pen`, `file`.
 - Prefer editing in a plain `.txt`? Keep a `<name>.txt` next to `<name>.md` with the same content. Whichever of the two
   you saved last is copied over the other before every validation and run, so editing either one works.

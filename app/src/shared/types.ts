@@ -17,6 +17,9 @@ export interface TemplateInfo {
   path: string
   file: string
   name: string
+  /** display title + icon: from templates.json in the templates folder, else guessed from the file name */
+  title: string
+  icon: string
   status: 'valid' | 'warnings' | 'invalid'
   errors: string[]
   warnings: string[]

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Check, Settings, TemplateInfo } from '../shared/types'
-import { Icon, PageHead, errText } from './ui'
+import { Icon, PageHead, errText, tplIcon } from './ui'
 
 type Go = (v: 'compose' | 'templates' | 'settings') => void
 
@@ -51,8 +51,9 @@ function TemplateCard({ t }: { t: TemplateInfo }) {
   return (
     <div className={`tcard tcard-${t.status}`}>
       <div className="tcard-main">
+        <span className="tpl-icon" aria-hidden="true"><Icon name={tplIcon(t.icon)} size={17} /></span>
         <div className="tcard-text">
-          <span className="tpl-name">{t.name}</span>
+          <span className="tpl-name">{t.title}</span>
           <span className="tpl-file mono" title={t.path}>{t.file}</span>
         </div>
         <StatusBadge t={t} />
