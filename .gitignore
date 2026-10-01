@@ -1,0 +1,20 @@
+node_modules/
+out/
+dist/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.log
+*.aux
+*.out
+.DS_Store
+
+# user data (never commit)
+runs/
+output/
+settings.json
+.env
+.env.*
+/templates/
+*.pdf

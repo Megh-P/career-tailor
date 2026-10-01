@@ -1,0 +1,68 @@
+{
+  "name": "career-tailor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Paste a job description, tailor your resume's Technical Skills for ATS filters, review every change",
+  "author": "danmano411",
+  "license": "MIT",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "npm run typecheck && electron-vite build",
+    "typecheck": "tsc -p .",
+    "start": "electron .",
+    "package": "npm run build && electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "com.danmano411.careertailor",
+    "productName": "Career Tailor",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc"
+        ]
+      },
+      {
+        "from": "../examples",
+        "to": "examples"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Career Tailor",
+      "artifactName": "Career-Tailor-Setup-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "diff": "^8.0.2",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^3.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
+  }
+}
