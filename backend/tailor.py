@@ -12,7 +12,8 @@ import argparse, datetime, json, os, pathlib, re, shutil, subprocess, sys, time,
 
 BACKEND = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND))
-from resume import validate_file, read, skills_from_template, parse_skills, sync  # noqa: E402
+from resume import ats, validate_file, read, skills_from_template, parse_skills, sync  # noqa: E402
+from render import render  # noqa: E402
 
 DEFAULT_NAME_FORMAT = "{name} Resume - {company} {role}"
 AGENTS = ("claude",)  # codex CLI / direct API are roadmap items; add a branch in run_agent()
@@ -72,6 +73,17 @@ def run_agent(agent, model, prompt, cwd, add_dirs, log, schema=SCHEMA, tools=TOO
     log.write_text(r.stdout + "\n--- stderr ---\n" + r.stderr, encoding="utf-8")
     out = json.loads(r.stdout)
     return out.get("structured_output") or json.loads(out.get("result") or "{}")
+
+
+def finish_locally(template, skills, job):
+    """Run the ats check and the render here, for when the agent wrote resume.md but couldn't run them."""
+    errs = ats(read(template), read(job / "resume.md"), set().union(*parse_skills(read(skills))))[0]
+    if errs:
+        raise RuntimeError("the agent's resume.md fails the ats check: " + "; ".join(errs))
+    rr = render(job / "resume.md", job / "resume.pdf")
+    if not rr["ok"]:
+        raise RuntimeError(f"render failed: {rr['error'] or rr}")
+    return job / "resume.pdf"
 
 
 def posting_url(job, jd):
@@ -158,12 +170,13 @@ def run(a):
             job_dir=job.as_posix(), jd=jd.as_posix())
         res = run_agent(a.agent, a.model, prompt, job, [BACKEND, template.parent, skills.parent], job / "agent.log")
         rec.update({k: res.get(k, rec[k]) for k in ("company", "role", "skills_added", "new_adjacent", "gaps", "error")})
-        if not res.get("ok"):
-            raise RuntimeError(res.get("error") or "the agent reported failure")
-        pdf = pathlib.Path(res["pdf"])
+        pdf = pathlib.Path(res.get("pdf") or job / "resume.pdf")
         pdf = pdf if pdf.is_absolute() else job / pdf
-        if not pdf.is_file():
-            raise FileNotFoundError(f"agent did not produce the PDF: {pdf}")
+        if not (res.get("ok") and pdf.is_file()):
+            if not ((job / "resume.md").is_file() and res.get("company")):
+                raise RuntimeError(res.get("error") or f"the agent reported failure and wrote no resume.md")
+            pdf = finish_locally(template, skills, job)  # the agent wrote the resume but stopped short of checking it
+            rec["error"] = ""
         dest_dir = pathlib.Path(a.out_dir).resolve()
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest = dest_dir / out_name(a.name_format, clean(v["name"]), clean(res["company"]), clean(res["role"]))
