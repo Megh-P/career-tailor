@@ -84,10 +84,11 @@ notification.
   `https://simplify.jobs/p/{id}`, a readable copy for career sites that need JavaScript), `markdown` (any README
   with `| [Name](link) | ... |` tables), `earlycareerradar`, plus `web_search` (an agent searches for recent
   postings the boards missed).
-- What gets tailored: every posting that isn't ruled out by a required qualification and scores at least
-  `min_fit` (1–5, default 3). "Uncertain" ones (e.g. an unknown GPA minimum) are tailored too and flagged in the
+- What gets tailored: every readable posting that isn't ruled out by a hard requirement and scores at least
+  `min_fit` (1–5, default 3; set 1 to tailor everything you are eligible for and decide yourself). "Uncertain" ones (e.g. an unknown GPA minimum) are tailored too and flagged in the
   report. Postings the agent couldn't read get their own section with links, to check by hand.
-- Limits: `max_candidates` screened per scan (the rest wait for the next scan), `max_tailor`.
+- Limits: `max_candidates` screened per scan (the rest wait for the next scan), optional `max_tailor`, `parallel`
+  (agent calls at once, default 3).
 - With the routine on, Career Tailor starts at login (in the tray, no window) and closing the window keeps it
   running. Clicking the shortcut again opens the window. Stop it from Task Manager, or set `"startup": false`.
 

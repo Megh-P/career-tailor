@@ -8,7 +8,7 @@ import { BACKEND, PY_ENV, getSettings, lastJson, skillsPath } from './setup'
 
 interface Slot { label: string; from: string; to: string }
 interface Config { enabled: boolean; startup: boolean; slots: Slot[]; reports_dir?: string; [k: string]: unknown }
-interface Result { report: string; new: number; tailored: number; failed: number }
+interface Result { report: string; new: number; tailored: number; failed: number; error?: string }
 
 const DEFAULTS = {
   enabled: false,
@@ -19,18 +19,18 @@ const DEFAULTS = {
   web_search: true,
   min_fit: 3,
   max_candidates: 60,
-  max_tailor: 30,
   sources: [
     { name: 'SimplifyJobs', type: 'listings-json', terms: 'Summer 2027',
       url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json',
       mirror: 'https://simplify.jobs/p/{id}',
       include: { category: ['Software', 'Software Engineering', 'AI/ML/Data', 'Data Science, AI & Machine Learning',
-        'Product', 'Product Management', 'Quant', 'Quantitative Finance'] } },
+        'Product', 'Product Management', 'Quant', 'Quantitative Finance', 'Hardware', 'Hardware Engineering'] } },
     { name: 'Underclassmen', type: 'listings-json',
       url: 'https://raw.githubusercontent.com/Jose-Gael-Cruz-Lopez/underclassmen-opportunities/main/.github/scripts/listings.json' },
     { name: 'LuisaE', type: 'markdown', url: 'https://raw.githubusercontent.com/LuisaE/opportunities/master/README.md' },
     { name: 'Early Career Radar', type: 'earlycareerradar', url: 'https://earlycareerradar.com/summer-internships',
-      include: { track: ['SWE', 'ML & AI', 'Data', 'PM', 'Security', 'Quant'] } },
+      include: { track: ['SWE', 'ML & AI', 'Data', 'PM', 'Security', 'Quant', 'Hardware', 'Other Engineering', 'Other',
+        'Operations'] } },
   ],
 }
 
@@ -74,6 +74,7 @@ function scan(label: string, onDone: () => void) {
     if (!running) return
     running = null
     const res = lastJson<Result>(out)
+    if (res?.error?.startsWith('another scan')) { refreshTray(); return } // a manual scan is running: retry next tick
     const r = ran()
     writeFileSync(file('routine-ran.json'), JSON.stringify({ slots: [...r.slots.slice(-20), `${day(new Date())} ${label}`],
       lastReport: res?.report ?? r.lastReport, lastFinished: new Date().toISOString() }), 'utf-8')
