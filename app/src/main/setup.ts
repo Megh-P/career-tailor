@@ -24,6 +24,8 @@ function defaults(): Settings {
     agent: 'claude',
     model: 'sonnet',
     nameFormat: '{name} Resume - {company} {role}',
+    appliedLog: '',
+    appliedTools: '',
   }
 }
 
@@ -61,6 +63,8 @@ export function saveSettings(s: Settings): Settings {
     agent: 'claude',
     model: str(s.model, d.model),
     nameFormat: str(s.nameFormat, d.nameFormat),
+    appliedLog: typeof s.appliedLog === 'string' ? s.appliedLog.trim() : '',
+    appliedTools: str(s.appliedTools, ''),
   }
   ensureDirs()
   writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')

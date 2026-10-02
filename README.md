@@ -65,11 +65,19 @@ Skills the agent may use come from your skills file (`## Skills` and `## Adjacen
 [template format](docs/TEMPLATE_FORMAT.md)). If you do not set one, `skills.md` in your templates folder is used,
 and created from your template if that file does not exist.
 
+## Applied button
+
+When you apply to a job, press **Applied** on its run page. The run is marked applied (it shows in the list), and if
+Settings → "When I press Applied" has an instruction, the agent carries it out with the job's company, role, posting
+link and today's date: for example, add a row to a Notion Applications database using your Claude Notion connector
+(set "Tools for that" to `mcp__claude_ai_Notion`). It checks for an existing entry first, so pressing twice doesn't
+duplicate. Nothing is logged when a resume is only tailored.
+
 ## Job scan routine
 
 Career Tailor can scan job boards twice a day by itself: it collects the postings that are new since the last scan,
 an agent reads each one and judges eligibility and fit against your profile, the matches are tailored (Auto
-template), and a report lands in `reports/` next to your runs folder (`scan-<date>-<slot>.md`) with a Windows
+template), and a report lands in `reports/<date>/` next to your runs folder (PDFs in `<output>/<date>/`) with a Windows
 notification.
 
 - Turn it on: tray icon → **Routine settings…** opens `routine.json`. Set `"enabled": true` and write your

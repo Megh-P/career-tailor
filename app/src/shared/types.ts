@@ -10,6 +10,10 @@ export interface Settings {
   agent: 'claude'
   model: string
   nameFormat: string
+  /** what the agent does when you press Applied (e.g. add a row to a Notion table); empty = just mark the run */
+  appliedLog: string
+  /** tools that agent may use, space-separated (e.g. an MCP server: mcp__claude_ai_Notion) */
+  appliedTools: string
 }
 
 /** One template file in the templates folder, with its `resume.py validate` result. */
@@ -58,6 +62,8 @@ export interface Run {
   auto_reason?: string
   /** the job posting's URL, when known */
   url?: string
+  /** set when you pressed Applied; link = the entry the agent logged it to */
+  applied?: { date: string; ok: boolean; link: string; error: string }
 }
 
 /** `resume.py ats` JSON */
@@ -80,11 +86,12 @@ export interface Detail {
   near: Record<string, string>
 }
 
-export type OpenTarget = 'pdf' | 'folder' | 'output' | 'log' | 'templates' | 'runs' | 'docs' | 'posting'
+export type OpenTarget = 'pdf' | 'folder' | 'output' | 'log' | 'templates' | 'runs' | 'docs' | 'posting' | 'applied'
 
 export interface Api {
   list(): Promise<Run[]>
   tailor(template: string, jd: string): Promise<string>
+  applied(id: string): Promise<Run['applied']>
   detail(id: string): Promise<Detail>
   open(target: OpenTarget, id?: string): Promise<string>
   onChange(cb: () => void): () => void

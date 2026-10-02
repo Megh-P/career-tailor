@@ -137,6 +137,20 @@ function tailor(template: string, jd: string): string {
 
 const find = (id: string): Rec | undefined => history().get(id) ?? live.get(id)
 
+/** You applied: mark the run and let the agent log it per your "When I apply" instruction (applied.py). */
+async function applied(id: string): Promise<Run['applied']> {
+  const r = find(id)
+  const folder = r && folderOf(r)
+  const file = folder ? join(folder, 'run.json') : ''
+  if (!file || !existsSync(file)) throw new Error('This run has no run.json to mark (still running, or its folder is gone).')
+  const s = getSettings()
+  const res = await py('applied.py', [file, '--instruction', s.appliedLog, '--tools', s.appliedTools], { timeout: 600_000 })
+  const out = lastJson<Run['applied']>(res.stdout)
+  changed()
+  if (!out) throw new Error((res.stderr || res.stdout).trim().slice(-600) || `applied.py exited with code ${res.code}`)
+  return out
+}
+
 async function ats(templatePath: string, resumePath: string): Promise<Ats> {
   const skills = skillsPath()
   const r = await py('resume.py', ['ats', templatePath, resumePath, ...(existsSync(skills) ? ['--skills', skills] : [])])
@@ -208,6 +222,11 @@ async function open(target: OpenTarget, id?: string): Promise<string> {
   if (target === 'runs') return openPath(s.runsDir)
   const r = id ? find(id) : undefined
   if (!r) return 'Run not found.'
+  if (target === 'applied') {
+    if (!/^https?:\/\//i.test(r.applied?.link ?? '')) return 'No logged entry for this run.'
+    await shell.openExternal(r.applied!.link)
+    return ''
+  }
   if (target === 'posting') {
     if (!/^https?:\/\//i.test(r.url ?? '')) return 'No posting link recorded for this run.'
     await shell.openExternal(r.url!)
@@ -240,6 +259,7 @@ const pushTemplates = () => scanTemplates().then((t) => win?.webContents.send('t
 ipcMain.handle('runs:list', () => list())
 ipcMain.handle('runs:tailor', (_e, t: string, jd: string) => tailor(t, jd))
 ipcMain.handle('runs:detail', (_e, id: string) => detail(id))
+ipcMain.handle('runs:applied', (_e, id: string) => applied(id))
 ipcMain.handle('open', (_e, target: OpenTarget, id?: string) => open(target, id))
 ipcMain.handle('openPath', (_e, p: string) => openPath(p))
 ipcMain.handle('pick', (_e, kind: 'folder' | 'file', current: string) => pick(kind, current))

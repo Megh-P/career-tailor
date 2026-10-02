@@ -411,7 +411,8 @@ def run(a):
     since = state.get("last_run", start - 12 * 3600)  # for the report header and web search; boards are diffed
     stamp = datetime.datetime.now()
     label = f"{stamp:%Y-%m-%d} {a.label or stamp.strftime('%H%M')}"
-    scan_dir = pathlib.Path(a.work_dir).resolve() / f"_scan-{stamp:%Y-%m-%d-%H%M}"
+    # one folder per day for PDFs and reports; scan working files out of the way under _scans/
+    scan_dir = pathlib.Path(a.work_dir).resolve() / "_scans" / f"{stamp:%Y-%m-%d-%H%M}"
     jd_dir = scan_dir / "jd"
     jd_dir.mkdir(parents=True, exist_ok=True)
     lines = []
@@ -477,7 +478,7 @@ def run(a):
         if len(pick) > cap:
             notes.append(f"{len(pick)} matches; tailored the top {cap} by fit.")
             pick = pick[:cap]
-        pdf_dir = pathlib.Path(a.out_dir) / f"Scan {label}"
+        pdf_dir = pathlib.Path(a.out_dir) / f"{stamp:%Y-%m-%d}"
         with cf.ThreadPoolExecutor(cfg.get("parallel", 3)) as ex:
             for r, rec in zip(pick, ex.map(lambda r: tailor_one(a, r, jd_dir, pdf_dir, model), pick)):
                 recs[r["id"]] = rec
@@ -485,8 +486,9 @@ def run(a):
                                                           ensure_ascii=False), encoding="utf-8")
 
     reports = pathlib.Path(a.reports_dir) if a.reports_dir else pathlib.Path(a.work_dir).resolve().parent / "reports"
+    reports = reports / f"{stamp:%Y-%m-%d}"
     reports.mkdir(parents=True, exist_ok=True)
-    out = reports / f"scan-{label.replace(' ', '-')}.md"
+    out = reports / f"scan-{stamp:%H%M}{'-' + a.label if a.label else ''}.md"
     report(out, label, since, counts, judged, recs, notes, cfg.get("min_fit", 3))
     (scan_dir / "scan.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
     if not a.dry_run:  # a dry run leaves state alone, so it never swallows postings or baselines

@@ -7,6 +7,21 @@ export function RunDetail({ run }: { run: Run }) {
   const [d, setD] = useState<Detail | null>(null)
   const [err, setErr] = useState('')
   const [openErr, setOpenErr] = useState('')
+  const [applying, setApplying] = useState(false)
+  const [applied, setApplied] = useState(run.applied)
+  useEffect(() => setApplied(run.applied), [run.id, run.applied])
+  const markApplied = async () => {
+    setApplying(true)
+    setOpenErr('')
+    try {
+      const a = await window.api.applied(run.id)
+      setApplied(a)
+      if (a && !a.ok) setOpenErr(`Marked applied, but logging it failed: ${a.error} (press Retry log)`)
+    } catch (e) {
+      setOpenErr(String((e as Error)?.message ?? e))
+    }
+    setApplying(false)
+  }
   const finished = run.status === 'done' || run.status === 'failed'
 
   useEffect(() => {
@@ -15,7 +30,7 @@ export function RunDetail({ run }: { run: Run }) {
     window.api.detail(run.id).then(setD, (e) => setErr(String(e?.message ?? e)))
   }, [run.id, finished])
 
-  const open = async (t: 'pdf' | 'folder' | 'log' | 'posting') => setOpenErr(await window.api.open(t, run.id))
+  const open = async (t: 'pdf' | 'folder' | 'log' | 'posting' | 'applied') => setOpenErr(await window.api.open(t, run.id))
 
   return (
     <div className="detail">
@@ -36,6 +51,10 @@ export function RunDetail({ run }: { run: Run }) {
         </div>
         <div className="actions">
           <button className="btn btn-primary" disabled={!run.output && !run.pdf && !run.folder} onClick={() => open('pdf')}><Icon name="file" />Open PDF</button>
+          {run.status === 'done' && (applied?.ok
+            ? <button className="btn btn-applied" onClick={() => applied.link && open('applied')} title={applied.link ? 'Open the logged entry' : 'Marked applied'}><Icon name="check" />Applied {applied.date}{applied.link && <Icon name="external" size={12} />}</button>
+            : <button className="btn" disabled={applying} onClick={markApplied} title="You applied: mark it, and log it where Settings says (e.g. your Notion table)">
+                <Icon name={applying ? 'spinner' : 'check'} className={applying ? 'spin' : undefined} />{applying ? 'Logging…' : applied ? 'Retry log' : 'Applied'}</button>)}
           <button className="btn" disabled={!run.output && !run.pdf && !run.folder} onClick={() => open('folder')} title="Opens the output folder with this PDF selected"><Icon name="folder" />Show in folder</button>
           <button className="btn" disabled={!run.url} onClick={() => open('posting')} title={run.url || 'No posting link recorded for this run'}><Icon name="link" />Open posting</button>
           <button className="btn" onClick={() => window.api.open('output')}><Icon name="folder" />Output folder</button>

@@ -10,6 +10,7 @@ function on<T>(ch: string, cb: (v: T) => void) {
 const api: Api = {
   list: () => ipcRenderer.invoke('runs:list'),
   tailor: (t, jd) => ipcRenderer.invoke('runs:tailor', t, jd),
+  applied: (id) => ipcRenderer.invoke('runs:applied', id),
   detail: (id) => ipcRenderer.invoke('runs:detail', id),
   open: (target, id) => ipcRenderer.invoke('open', target, id),
   onChange: (cb) => on('runs:changed', cb),
