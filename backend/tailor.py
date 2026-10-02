@@ -62,12 +62,13 @@ TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "WebFetch", "Bash(python:*)",
 def run_agent(agent, model, prompt, cwd, add_dirs, log, schema=SCHEMA, tools=TOOLS):
     if agent != "claude":
         raise ValueError(f"--agent {agent!r} is not supported yet; only 'claude' is implemented")
-    cmd = [shutil.which("claude") or "claude", "-p", prompt, "--model", model, "--output-format", "json",
+    # the prompt goes in on stdin: as an argument it hits Windows' 32k command-line limit once it carries postings
+    cmd = [shutil.which("claude") or "claude", "-p", "--model", model, "--output-format", "json",
            "--json-schema", json.dumps(schema), "--permission-mode", "acceptEdits"]
     cmd += ["--allowedTools", *tools] if tools else ["--tools", ""]  # no tools: answer from the prompt alone
     for d in add_dirs:
         cmd += ["--add-dir", str(d)]
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+    r = subprocess.run(cmd, input=prompt, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        timeout=900, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     log.write_text(r.stdout + "\n--- stderr ---\n" + r.stderr, encoding="utf-8")
