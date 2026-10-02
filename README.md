@@ -76,12 +76,18 @@ notification.
   `profile` (school, graduation date, class standing, work authorization, target roles, locations). The screener
   judges eligibility from it, so be specific.
 - When: `slots` are time windows (default 11:45–14:30 and 18:00–21:00). Each runs once a day, at the first check
-  inside its window, so a laptop that was asleep at noon still scans when it wakes. Postings are never skipped:
-  each scan covers everything since the previous one (up to 2 days back).
-- Where from: `sources`. `listings-json` (SimplifyJobs-style repos, filtered by posting date), `markdown` (any
-  README with `| [Name](link) | ... |` tables; new = links it hasn't seen, the first scan only records a baseline),
-  `earlycareerradar`, plus `web_search` (an agent searches for recent postings the boards missed).
-- Limits: `max_candidates` (screened per scan), `max_tailor`, `min_fit` (1–5).
+  inside its window, so a laptop that was asleep at noon still scans when it wakes.
+- What counts as new: a diff, not a date filter. Each board is compared with its rows at the last successful
+  fetch (boards backdate posting dates, so dates miss real additions). A failed fetch keeps the old snapshot, so
+  an outage delays postings but never skips them. The first fetch of a board only records a baseline.
+- Where from: `sources`. `listings-json` (SimplifyJobs-style repos; optional `mirror`, e.g.
+  `https://simplify.jobs/p/{id}`, a readable copy for career sites that need JavaScript), `markdown` (any README
+  with `| [Name](link) | ... |` tables), `earlycareerradar`, plus `web_search` (an agent searches for recent
+  postings the boards missed).
+- What gets tailored: every posting that isn't ruled out by a required qualification and scores at least
+  `min_fit` (1–5, default 3). "Uncertain" ones (e.g. an unknown GPA minimum) are tailored too and flagged in the
+  report. Postings the agent couldn't read get their own section with links, to check by hand.
+- Limits: `max_candidates` screened per scan (the rest wait for the next scan), `max_tailor`.
 - With the routine on, Career Tailor starts at login (in the tray, no window) and closing the window keeps it
   running. Clicking the shortcut again opens the window. Stop it from Task Manager, or set `"startup": false`.
 

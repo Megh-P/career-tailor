@@ -23,6 +23,7 @@ const DEFAULTS = {
   sources: [
     { name: 'SimplifyJobs', type: 'listings-json', terms: 'Summer 2027',
       url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json',
+      mirror: 'https://simplify.jobs/p/{id}',
       include: { category: ['Software', 'Software Engineering', 'AI/ML/Data', 'Data Science, AI & Machine Learning',
         'Product', 'Product Management', 'Quant', 'Quantitative Finance'] } },
     { name: 'Underclassmen', type: 'listings-json',
