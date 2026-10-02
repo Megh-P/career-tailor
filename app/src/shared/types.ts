@@ -56,6 +56,8 @@ export interface Run {
   /** auto mode: the agent picked `template`, for this reason */
   auto?: boolean
   auto_reason?: string
+  /** the job posting's URL, when known */
+  url?: string
 }
 
 /** `resume.py ats` JSON */
@@ -78,7 +80,7 @@ export interface Detail {
   near: Record<string, string>
 }
 
-export type OpenTarget = 'pdf' | 'folder' | 'output' | 'log' | 'templates' | 'runs' | 'docs'
+export type OpenTarget = 'pdf' | 'folder' | 'output' | 'log' | 'templates' | 'runs' | 'docs' | 'posting'
 
 export interface Api {
   list(): Promise<Run[]>

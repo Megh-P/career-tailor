@@ -15,7 +15,7 @@ export function RunDetail({ run }: { run: Run }) {
     window.api.detail(run.id).then(setD, (e) => setErr(String(e?.message ?? e)))
   }, [run.id, finished])
 
-  const open = async (t: 'pdf' | 'folder' | 'log') => setOpenErr(await window.api.open(t, run.id))
+  const open = async (t: 'pdf' | 'folder' | 'log' | 'posting') => setOpenErr(await window.api.open(t, run.id))
 
   return (
     <div className="detail">
@@ -37,6 +37,7 @@ export function RunDetail({ run }: { run: Run }) {
         <div className="actions">
           <button className="btn btn-primary" disabled={!run.output && !run.pdf && !run.folder} onClick={() => open('pdf')}><Icon name="file" />Open PDF</button>
           <button className="btn" disabled={!run.output && !run.pdf && !run.folder} onClick={() => open('folder')} title="Opens the output folder with this PDF selected"><Icon name="folder" />Show in folder</button>
+          <button className="btn" disabled={!run.url} onClick={() => open('posting')} title={run.url || 'No posting link recorded for this run'}><Icon name="link" />Open posting</button>
           <button className="btn" onClick={() => window.api.open('output')}><Icon name="folder" />Output folder</button>
         </div>
       </header>

@@ -200,7 +200,7 @@ def judge(cfg, chunk, scan_dir, jd_dir, digests, model):
 def tailor_one(a, r, jd_dir, pdf_dir, model):
     ns = argparse.Namespace(template="auto", templates_dir=a.templates_dir, jd_file=str(jd_dir / f"{r['id']}.txt"),
                             work_dir=a.work_dir, out_dir=str(pdf_dir), skills=a.skills, agent="claude", model=model,
-                            id=r["run_id"], name_format=a.name_format)
+                            id=r["run_id"], name_format=a.name_format, url=r["url"])
     return tailor.run(ns)
 
 

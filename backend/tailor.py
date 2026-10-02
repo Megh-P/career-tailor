@@ -74,6 +74,16 @@ def run_agent(agent, model, prompt, cwd, add_dirs, log, schema=SCHEMA, tools=TOO
     return out.get("structured_output") or json.loads(out.get("result") or "{}")
 
 
+def posting_url(job, jd):
+    """The posting's link: a pasted JD that is just a URL, else the `Link:` line the agent wrote in job.md."""
+    text = read(jd).strip()
+    if re.fullmatch(r"https?://\S+", text):
+        return text
+    m = re.search(r"^\W*Link\W*:?\W*(https?://[^\s)>\]]+)", read(job / "job.md") if (job / "job.md").is_file() else "",
+                  re.M | re.I)
+    return m.group(1) if m else ""
+
+
 def digest(path):
     """What the picker sees of a template: title (templates.json), entry headers, and skill lines. Not the bullets."""
     title = ""
@@ -116,7 +126,7 @@ def run(a):
     today = datetime.date.today().isoformat()
     work = pathlib.Path(a.work_dir).resolve()
     rec = {"id": a.id, "template": str(a.template), "template_snapshot": "", "status": "failed", "company": "", "role": "",
-           "folder": "", "pdf": "", "output": "", "skills_added": [], "new_adjacent": [], "gaps": [], "error": "",
+           "folder": "", "pdf": "", "output": "", "url": a.url or "", "skills_added": [], "new_adjacent": [], "gaps": [], "error": "",
            "started": datetime.datetime.now().isoformat(timespec="seconds"), "finished": ""}
     job = work / f"{today}-{a.id}"
     try:
@@ -158,7 +168,7 @@ def run(a):
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest = dest_dir / out_name(a.name_format, clean(v["name"]), clean(res["company"]), clean(res["role"]))
         shutil.copyfile(pdf, dest)
-        rec.update(status="done", output=str(dest), pdf=str(pdf), error="")
+        rec.update(status="done", output=str(dest), pdf=str(pdf), error="", url=rec["url"] or posting_url(job, jd))
         # rename the job dir to <date>-<company>-<role> now that the agent has named them
         # Cosmetic, so best-effort: on Windows a just-finished agent process or an antivirus/indexer scan can still
         # hold the folder for a moment. Retry briefly; if it stays locked, keep the id-named folder. The run is done.
@@ -192,6 +202,7 @@ def main(argv):
     ap.add_argument("--agent", default="claude")
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--id", default=None)
+    ap.add_argument("--url", default="", help="the posting's link, recorded in the run (else taken from job.md)")
     ap.add_argument("--name-format", default=DEFAULT_NAME_FORMAT)
     a = ap.parse_args(argv)
     a.id = clean(a.id or uuid.uuid4().hex[:8]).replace(" ", "-")
@@ -209,6 +220,14 @@ def selftest():
     assert clean(long_role) == "Machine Learning Engineer Intern, Behavior Prediction (Summer 2027) for the", clean(long_role)
     assert clean("Waymo Machine Learning Engineer Intern, Behavior Prediction (Summer 2027 cohort, Mountain View)") == \
         "Waymo Machine Learning Engineer Intern, Behavior Prediction"
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        d = pathlib.Path(d)
+        (d / "jd.txt").write_text("Acme SWE intern...", encoding="utf-8")
+        (d / "job.md").write_text("# Acme · SWE\n- **Link:** https://x.com/j/1)\n", encoding="utf-8")
+        assert posting_url(d, d / "jd.txt") == "https://x.com/j/1", posting_url(d, d / "jd.txt")
+        (d / "jd.txt").write_text(" https://y.com/2 \n", encoding="utf-8")
+        assert posting_url(d, d / "jd.txt") == "https://y.com/2"
     print("selftest ok")
 
 

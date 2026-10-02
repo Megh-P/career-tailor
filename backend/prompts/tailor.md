@@ -16,7 +16,7 @@ template. Prefer Write/Edit for file edits. Run Python as `PYTHONIOENCODING=utf-
 You are a scribe, not an editor: copy what the posting says, never paraphrase requirements. Read `{jd}`. If it is
 only a URL, fetch it with WebFetch. If you cannot get the responsibilities and qualifications, return ok=false with the reason.
 
-`job.md` contains: `# <Company> · <Role>`, then Location and Link if known, then the responsibilities and
+`job.md` contains: `# <Company> · <Role>`, then `Location: ...` and `Link: <posting URL>` lines if known (the URL you fetched, or one in the description that points to this posting), then the responsibilities and
 qualifications verbatim (drop EEO text, benefits, company history). Then `## Keywords`: 10 to 20 exact phrases as they
 appear in the posting ("C++" stays "C++"), ranked by weight: required > preferred > mentioned, repeat count breaks
 ties. One per line:

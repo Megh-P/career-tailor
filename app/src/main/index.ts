@@ -208,6 +208,11 @@ async function open(target: OpenTarget, id?: string): Promise<string> {
   if (target === 'runs') return openPath(s.runsDir)
   const r = id ? find(id) : undefined
   if (!r) return 'Run not found.'
+  if (target === 'posting') {
+    if (!/^https?:\/\//i.test(r.url ?? '')) return 'No posting link recorded for this run.'
+    await shell.openExternal(r.url!)
+    return ''
+  }
   const folder = folderOf(r)
   if (target === 'pdf' || target === 'folder') {
     const pdf = await ensurePdf(r, folder)
