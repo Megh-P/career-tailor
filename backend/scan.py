@@ -100,33 +100,64 @@ def _icims(u):
     return text_of(get(u.split("?")[0] + "?in_iframe=1", tries=1))
 
 
+def _eightfold(u):  # Eightfold career sites (apply.careers.microsoft.com, <company>.eightfold.ai)
+    p = urllib.parse.urlparse(u)
+    jid = re.search(r"/job/(\d+)", p.path).group(1)
+    domain = "microsoft.com" if "microsoft" in p.netloc else p.netloc.split(".")[0] + ".com"
+    j = json.loads(get(f"https://{p.netloc}/api/apply/v2/jobs/{jid}?domain={domain}", tries=1))
+    return f"{j.get('name', '')}\n{j.get('location', '')}\n{text_of(j.get('job_description', ''))}"
+
+
 def _page(u):
-    return text_of(get(u, tries=1))
+    """The page's text, or its schema.org JobPosting (most career sites embed one for search engines, even when the
+    visible page is rendered by JavaScript)."""
+    h = get(u, tries=1)
+    for block in re.findall(r'(?is)<script[^>]+application/ld\+json[^>]*>(.*?)</script>', h):
+        try:
+            data = json.loads(block)
+        except ValueError:
+            continue
+        for d in data if isinstance(data, list) else data.get("@graph", [data]):
+            if isinstance(d, dict) and d.get("@type") == "JobPosting" and d.get("description"):
+                return f"{d.get('title', '')}\n{text_of(html.unescape(d['description']))}"
+    return text_of(h)
 
 
-def looks_like_posting(t):
-    return len(t) >= 800 and re.search(r"qualifications|requirements|responsibilit|what you.ll|you will|about the role",
-                                       t, re.I)
+def looks_like_posting(t, title=""):
+    """Long enough, reads like a job description, and (given a title) mentions most of the title's words, so a
+    company's generic careers page doesn't pass for the posting."""
+    words = {w for w in re.findall(r"[a-z]{4,}", title.lower()) if w not in ("intern", "internship", "summer")}
+    return (len(t) >= 800 and re.search(r"qualifications|requirements|responsibilit|what you.ll|you will|about the role",
+                                        t, re.I) and (not words or sum(w in t.lower() for w in words) >= 0.6 * len(words)))
 
 
-def fetch_posting(url, mirror=""):
-    """The posting's text without an agent: ATS APIs for JS-rendered career sites, else the page itself, then the
-    mirror. -> (text, error). Anything that doesn't read like a job description counts as a miss."""
-    host = urllib.parse.urlparse(url).netloc
+GONE = "gone: "  # fetch_error prefix for postings the ATS says no longer exist
+
+
+def fetch_posting(url, mirror="", title=""):
+    """The posting's text without an agent: ATS APIs for JS-rendered career sites, else the page itself (or its
+    JobPosting data), then the mirror. -> (text, error). Text that doesn't read like a job description is a miss."""
+    p = urllib.parse.urlparse(url)
+    host = p.netloc
     first = (_workday if "myworkdayjobs" in host else _ashby if "ashbyhq" in host else
              _greenhouse if "greenhouse.io" in host else _icims if "icims" in host else
-             _oracle if "oraclecloud" in host else _gh_jid if "gh_jid=" in url else _page)
+             _oracle if "/hcmUI/CandidateExperience/" in p.path else
+             _eightfold if "eightfold.ai" in host or "careers.microsoft.com" in host else
+             _gh_jid if "gh_jid=" in url else _page)
     err = ""
-    for fn, u in ((first, url), (_page, mirror)):
+    # a gh_jid link's page is the company's whole careers page: never read it as the posting
+    tries = ((first, url), (_page, mirror)) if first is _gh_jid else ((first, url), (_page, url), (_page, mirror))
+    for fn, u in dict.fromkeys(tries):
         if not u:
             continue
         try:
             t = fn(u)
-            if looks_like_posting(t):
+            if looks_like_posting(t, title):
                 return t, ""
             err = err or f"{urllib.parse.urlparse(u).netloc}: no posting text on the page"
         except Exception as ex:
-            err = err or f"{urllib.parse.urlparse(u).netloc}: {type(ex).__name__}: {ex}"[:160]
+            gone = fn in (_ashby, _greenhouse, _gh_jid) and ("404" in str(ex) or isinstance(ex, LookupError))
+            err = err or (GONE if gone else "") + f"{urllib.parse.urlparse(u).netloc}: {type(ex).__name__}: {ex}"[:160]
     return "", err
 
 
@@ -309,7 +340,11 @@ def judge(cfg, chunk, scan_dir, jd_dir, digests, model):
     res = agent(prompt, JUDGE_SCHEMA, ["WebFetch", "WebSearch", "Write"], scan_dir,
                 scan_dir / f"judge-{chunk[0]['id']}.log", model, add_dirs=[jd_dir])
     by_id = {r["id"]: r for r in res.get("results", [])}
-    return [{**r, **by_id[r["id"]]} if r["id"] in by_id else unjudged(r, "not judged (agent error)") for r in chunk]
+    out = [{**r, **by_id[r["id"]]} if r["id"] in by_id else unjudged(r, "not judged (agent error)") for r in chunk]
+    for r in out:  # the ATS said the posting no longer exists, and nobody found it elsewhere
+        if r["page"] == "unreadable" and (r.get("fetch_error") or "").startswith(GONE):
+            r["page"] = "closed"
+    return out
 
 
 def tailor_one(a, r, jd_dir, pdf_dir, model):
@@ -417,7 +452,7 @@ def run(a):
         digests = "\n\n".join(tailor.digest(p) for p in files)
 
         def prefetch(r):  # no agent needed for most postings; the JD file is what tailoring reads
-            text, r["fetch_error"] = fetch_posting(r["url"], r.get("mirror", ""))
+            text, r["fetch_error"] = fetch_posting(r["url"], r.get("mirror", ""), r["title"])
             if text:
                 (jd_dir / f"{r['id']}.txt").write_text(f"{r['company']} · {r['title']}\n{r['url']}\n\n{text}",
                                                        encoding="utf-8")
@@ -508,6 +543,9 @@ def selftest():
     html = f"<script>self.__next_f.push([1,{chunk}])</script>"
     assert [r["company"] for r in from_ecr({"include": {"track": ["ML & AI"]}}, html) if r["keep"]] == ["Z"]
     assert TITLE_SKIP.search("Software Engineer Intern - PhD") and not TITLE_SKIP.search("Software Engineer Intern")
+    jd = "Machine Learning Intern. Responsibilities: build models. " + "x " * 500
+    assert looks_like_posting(jd, "Machine Learning Intern") and not looks_like_posting(jd, "Data Center Technician")
+    assert not looks_like_posting("Qualifications: short")
 
     # diff semantics: first fetch = baseline; then only added rows, whatever their posted date; a failed fetch
     # keeps the snapshot, so rows added during an outage still show up on the next good fetch
