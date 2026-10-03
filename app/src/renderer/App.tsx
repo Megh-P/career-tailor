@@ -33,6 +33,7 @@ export function App() {
     return () => clearInterval(t)
   }, [live])
 
+  const [logo, setLogo] = useState(true) // public/logo.png is a local, untracked file; without it, the CT mark
   const selected = typeof view === 'object' ? view.run : null
   const run = runs?.find((r) => r.id === selected)
   const issues = checks?.filter((c) => !c.ok).length ?? 0
@@ -46,7 +47,8 @@ export function App() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="mark" aria-hidden="true">CT</span>
+          {logo ? <img className="mark mark-img" src="./logo.png" alt="" onError={() => setLogo(false)} />
+            : <span className="mark" aria-hidden="true">CT</span>}
           <span className="brand-name">Career Tailor</span>
         </div>
         <nav className="nav" aria-label="Main">

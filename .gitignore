@@ -18,3 +18,7 @@ settings.json
 .env.*
 /templates/
 *.pdf
+
+# local app icon (not part of the public repo)
+app/build/icon.*
+app/src/renderer/public/logo.png
