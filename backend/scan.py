@@ -1,6 +1,7 @@
 """Scheduled job scan: postings that are new on your job boards since the last scan -> eligibility + fit judgment
 (agent) -> tailor the matches (tailor.py, auto template) -> one markdown report.
 
+  python scan.py --fetch <url>     # one posting's text as {"text", "error"} (the app's Link box)
   python scan.py --config routine.json --state routine-state.json --work-dir <runs> --out-dir <pdf dir>
                  --templates-dir <dir> [--reports-dir <dir>] [--skills <skills.md>] [--model sonnet]
                  [--name-format "..."] [--label noon] [--dry-run]
@@ -589,6 +590,9 @@ def selftest():
 if __name__ == "__main__":
     if sys.argv[1:] == ["--test"]:
         selftest()
+    elif sys.argv[1:2] == ["--fetch"] and len(sys.argv) == 3:  # the app's Link box: python scan.py --fetch <url>
+        text, err = fetch_posting(sys.argv[2].strip())
+        print(json.dumps({"text": text, "error": err}, ensure_ascii=False))
     else:
         sys.exit(main(sys.argv[1:]))
 

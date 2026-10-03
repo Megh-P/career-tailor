@@ -392,3 +392,9 @@ input.mono { font-size: 12.5px; }
 .tag-applied { color: var(--accent-text); background: var(--accent-soft); }
 #applog { width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
   background: var(--surface); color: inherit; font: inherit; resize: vertical; }
+
+/* composer: Link | Paste */
+.jd-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.jd-head .field-label { margin: 0; }
+.jd-head .segmented button { display: inline-flex; align-items: center; gap: 6px; }
+.jd-card .jd-link { width: 100%; margin-bottom: 8px; }

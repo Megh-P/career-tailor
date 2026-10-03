@@ -90,7 +90,9 @@ export type OpenTarget = 'pdf' | 'folder' | 'output' | 'log' | 'templates' | 'ru
 
 export interface Api {
   list(): Promise<Run[]>
-  tailor(template: string, jd: string): Promise<string>
+  tailor(template: string, jd: string, url?: string): Promise<string>
+  /** a posting's text from its link (ATS APIs / the page), or why it couldn't be read */
+  fetchPosting(url: string): Promise<{ text: string; error: string }>
   applied(id: string): Promise<Run['applied']>
   detail(id: string): Promise<Detail>
   open(target: OpenTarget, id?: string): Promise<string>

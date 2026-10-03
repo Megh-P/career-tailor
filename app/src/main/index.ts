@@ -23,7 +23,7 @@ type Rec = Run & { template_snapshot?: string }
 
 let win: BrowserWindow | null = null
 const live = new Map<string, Run>() // runs started this session
-const queue: { id: string; jdPath: string }[] = []
+const queue: { id: string; jdPath: string; url: string }[] = []
 
 const runs = () => getSettings().runsDir
 const inbox = () => join(runs(), '_inbox')
@@ -82,7 +82,7 @@ const now = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).
 function pump() {
   const running = [...live.values()].filter((r) => r.status === 'running').length
   if (running >= MAX_RUNNING || !queue.length) return
-  const { id, jdPath } = queue.shift()!
+  const { id, jdPath, url } = queue.shift()!
   const run = live.get(id)!
   const s = getSettings()
   Object.assign(run, { status: 'running', started: now() })
@@ -90,7 +90,7 @@ function pump() {
   const args = [
     join(BACKEND, 'tailor.py'), '--template', run.template, '--jd-file', jdPath, '--work-dir', s.runsDir,
     '--out-dir', s.outputDir, '--skills', skillsPath(), '--agent', s.agent, '--model', s.model, '--id', id,
-    '--name-format', s.nameFormat, '--templates-dir', s.templatesDir,
+    '--name-format', s.nameFormat, '--templates-dir', s.templatesDir, ...(url ? ['--url', url] : []),
   ]
   const child = spawn(s.python, args, { cwd: BACKEND, env: PY_ENV, windowsHide: true })
   let stdout = ''
@@ -114,7 +114,7 @@ function pump() {
   pump()
 }
 
-function tailor(template: string, jd: string): string {
+function tailor(template: string, jd: string, url = ''): string {
   if (template === 'auto') {
     if (knownTemplates().filter((x) => x.status !== 'invalid').length < 2) throw new Error('Auto needs at least two valid templates.')
   } else {
@@ -129,7 +129,7 @@ function tailor(template: string, jd: string): string {
   writeFileSync(jdPath, jd, 'utf-8')
   const title = jd.split('\n').map((l) => l.trim()).find(Boolean)?.slice(0, 90)
   live.set(id, { id, template, status: 'queued', title, started: now() })
-  queue.push({ id, jdPath })
+  queue.push({ id, jdPath, url: /^https?:\/\/\S+$/i.test(url.trim()) ? url.trim() : '' })
   changed()
   pump()
   return id
@@ -257,7 +257,11 @@ async function pick(kind: 'folder' | 'file', current: string) {
 const pushTemplates = () => scanTemplates().then((t) => win?.webContents.send('templates:changed', t))
 
 ipcMain.handle('runs:list', () => list())
-ipcMain.handle('runs:tailor', (_e, t: string, jd: string) => tailor(t, jd))
+ipcMain.handle('runs:tailor', (_e, t: string, jd: string, url?: string) => tailor(t, jd, url))
+ipcMain.handle('posting:fetch', async (_e, url: string) => {
+  const r = await py('scan.py', ['--fetch', url], { timeout: 120_000 })
+  return lastJson<{ text: string; error: string }>(r.stdout) ?? { text: '', error: (r.stderr || r.stdout).trim().slice(-300) || 'fetch failed' }
+})
 ipcMain.handle('runs:detail', (_e, id: string) => detail(id))
 ipcMain.handle('runs:applied', (_e, id: string) => applied(id))
 ipcMain.handle('open', (_e, target: OpenTarget, id?: string) => open(target, id))

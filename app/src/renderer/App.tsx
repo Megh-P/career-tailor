@@ -92,17 +92,22 @@ export function App() {
 }
 
 const LAST = 'ct.template'
+const MODE = 'ct.inputMode'
 const AUTO = 'auto' // tailor.py --template auto: the agent picks the template
 const RANK = { valid: 0, warnings: 1, invalid: 2 }
 const remembered = () => { try { return localStorage.getItem(LAST) } catch { return null } }
 
 function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | null; onQueued: (id: string) => void; go: (v: View) => void }) {
   const [jd, setJd] = useState('')
+  const [links, setLinks] = useState('')
+  const [jdLink, setJdLink] = useState('') // Paste mode: the posting's link, recorded with the run
+  const [mode, setMode] = useState<'link' | 'paste'>(() => { try { return localStorage.getItem(MODE) === 'paste' ? 'paste' : 'link' } catch { return 'link' } })
   const [pick, setPick] = useState<string | null>(remembered)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState('')
   const [err, setErr] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => ref.current?.focus(), [])
+  useEffect(() => ref.current?.focus(), [mode])
+  const switchMode = (m: 'link' | 'paste') => { setMode(m); setErr(''); try { localStorage.setItem(MODE, m) } catch { /* private mode */ } }
 
   const usable = templates?.filter((t) => t.status !== 'invalid').sort((a, b) => RANK[a.status] - RANK[b.status]) ?? []
   const auto = pick === AUTO && usable.length > 1 // auto needs something to choose between
@@ -110,18 +115,42 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
   const choose = (p: string) => { setPick(p); try { localStorage.setItem(LAST, p) } catch { /* private mode */ } }
 
   const words = jd.trim() ? jd.trim().split(/\s+/).length : 0
+  const urls = links.split(/\s+/).filter((u) => /^https?:\/\/\S+$/i.test(u))
+  const ready = mode === 'link' ? urls.length > 0 : !!jd.trim()
+
   const submit = async () => {
-    if (!jd.trim() || busy || !template) return
-    setBusy(true)
+    if (!ready || busy || !template) return
     setErr('')
     try {
-      const id = await window.api.tailor(template.path, jd)
-      setJd('')
-      onQueued(id)
+      if (mode === 'paste') {
+        setBusy('Queueing…')
+        onQueued(await window.api.tailor(template.path, jd, jdLink.trim()))
+        setJd('')
+        setJdLink('')
+        return
+      }
+      // Link mode: read each posting here; queue the ones that read, hand the first that didn't to Paste mode
+      const failed: { url: string; error: string }[] = []
+      let last = ''
+      for (const [i, u] of urls.entries()) {
+        setBusy(urls.length > 1 ? `Reading ${i + 1} of ${urls.length}…` : 'Reading the posting…')
+        const f = await window.api.fetchPosting(u)
+        if (f.text) last = await window.api.tailor(template.path, `${u}\n\n${f.text}`, u)
+        else failed.push({ url: u, error: f.error })
+      }
+      setLinks(failed.map((f) => f.url).join('\n'))
+      if (failed.length) {
+        setJdLink(failed[0].url)
+        setJd('')
+        switchMode('paste')
+        setErr(`Couldn't read ${failed.length === 1 ? 'that page' : `${failed.length} of the links`} (${failed[0].error}). ` +
+          `Paste the job description for ${failed[0].url}${failed.length > 1 ? '; the other failed links are still in the Link tab' : ''}.`)
+      }
+      if (last) onQueued(last)
     } catch (e) {
       setErr(errText(e))
     } finally {
-      setBusy(false)
+      setBusy('')
     }
   }
 
@@ -133,16 +162,40 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
 
   return (
     <div className="page composer">
-      <PageHead title="Tailor a resume" sub="Paste a job description and pick a template. The agent rewrites only the Technical Skills section; you review every change here." />
+      <PageHead title="Tailor a resume" sub="Give a link to the posting (or paste its description) and pick a template. The agent rewrites only the Technical Skills section; you review every change here." />
       <div className="composer-grid">
         <div className="jd-card">
-          <label htmlFor="jd" className="field-label">Job description</label>
-          <textarea id="jd" ref={ref} value={jd} onChange={(e) => setJd(e.target.value)} spellCheck={false}
-            placeholder="Paste the full posting: title, company, responsibilities, requirements…" />
-          <div className="jd-foot">
-            <span>{words ? `${words.toLocaleString()} words` : 'Empty'}</span>
-            {jd && <button className="link" onClick={() => { setJd(''); ref.current?.focus() }}>Clear</button>}
+          <div className="jd-head">
+            <span className="field-label">{mode === 'link' ? 'Posting links' : 'Job description'}</span>
+            <div className="segmented" role="radiogroup" aria-label="Input">
+              {(['link', 'paste'] as const).map((m) => (
+                <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? 'on' : ''} onClick={() => switchMode(m)}>
+                  <Icon name={m === 'link' ? 'link' : 'file'} size={13} />{m === 'link' ? 'Link' : 'Paste'}
+                </button>
+              ))}
+            </div>
           </div>
+          {mode === 'link' ? (
+            <>
+              <textarea id="links" ref={ref} className="mono" value={links} onChange={(e) => setLinks(e.target.value)} spellCheck={false}
+                placeholder={'https://jobs.example.com/posting/123\n\nOne link per line to tailor several at once. Workday, Greenhouse, Lever, Ashby, iCIMS, Oracle, and Microsoft careers pages are read directly; if a page can\'t be read, you\'ll paste its description instead.'} />
+              <div className="jd-foot">
+                <span>{urls.length ? `${urls.length} link${urls.length > 1 ? 's' : ''}` : 'Empty'}</span>
+                {links && <button className="link" onClick={() => { setLinks(''); ref.current?.focus() }}>Clear</button>}
+              </div>
+            </>
+          ) : (
+            <>
+              <input className="jd-link mono" value={jdLink} onChange={(e) => setJdLink(e.target.value)} spellCheck={false}
+                placeholder="Posting link (optional, saved with the run)" aria-label="Posting link" />
+              <textarea id="jd" ref={ref} value={jd} onChange={(e) => setJd(e.target.value)} spellCheck={false}
+                placeholder="Paste the full posting: title, company, responsibilities, requirements…" />
+              <div className="jd-foot">
+                <span>{words ? `${words.toLocaleString()} words` : 'Empty'}</span>
+                {jd && <button className="link" onClick={() => { setJd(''); ref.current?.focus() }}>Clear</button>}
+              </div>
+            </>
+          )}
         </div>
         <div className="side-panel">
           <div className="field-label" id="tpl-label">Template</div>
@@ -185,10 +238,10 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
           {templates?.some((t) => t.status === 'invalid') && (
             <button className="link small" onClick={() => go('templates')}>Why are some templates disabled?</button>
           )}
-          <button className="btn btn-primary btn-lg" disabled={!jd.trim() || busy || !template} onClick={submit}>
+          <button className="btn btn-primary btn-lg" disabled={!ready || !!busy || !template} onClick={submit}>
             {busy && <Icon name="spinner" className="spin" />}
-            Tailor resume
-            <kbd>Ctrl ↵</kbd>
+            {busy || (mode === 'link' && urls.length > 1 ? `Tailor ${urls.length} resumes` : 'Tailor resume')}
+            {!busy && <kbd>Ctrl ↵</kbd>}
           </button>
           {err && <div className="alert alert-danger" role="alert"><Icon name="alert" />{err}</div>}
           <ul className="notes">

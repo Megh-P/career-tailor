@@ -169,7 +169,14 @@ def run(a):
         prompt = (BACKEND / "prompts" / "tailor.md").read_text(encoding="utf-8").format(
             date=today, backend=BACKEND.as_posix(), template=template.as_posix(), skills=skills.as_posix(),
             job_dir=job.as_posix(), jd=jd.as_posix())
-        res = run_agent(a.agent, a.model, prompt, job, [BACKEND, template.parent, skills.parent], job / "agent.log")
+        try:
+            res = run_agent(a.agent, a.model, prompt, job, [BACKEND, template.parent, skills.parent], job / "agent.log")
+        except subprocess.TimeoutExpired:  # a slow machine; the agent may have written resume.md already
+            res = {"ok": False, "error": "the agent timed out"}
+        if not res.get("company"):  # job.md starts "# <Company> · <Role>"
+            m = re.match(r"#\s*(.+?)\s*·\s*(.+)", read(job / "job.md") if (job / "job.md").is_file() else "")
+            if m:
+                res.update(company=m.group(1).strip(), role=m.group(2).strip())
         rec.update({k: res.get(k, rec[k]) for k in ("company", "role", "skills_added", "new_adjacent", "gaps", "error")})
         pdf = pathlib.Path(res.get("pdf") or job / "resume.pdf")
         pdf = pdf if pdf.is_absolute() else job / pdf
