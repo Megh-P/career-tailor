@@ -125,6 +125,11 @@ def choose_template(a, jd_text, job):
     """Auto mode: one cheap agent call picks the best-fitting valid template. -> (path, reason)"""
     tdir = pathlib.Path(a.templates_dir or "").resolve()
     files = sorted(p for p in tdir.glob("*.md") if p.name.lower() != "skills.md") if a.templates_dir else []
+    try:  # templates.json {"general.md": {"auto": false}}: a template you pick by hand, never Auto (e.g. a catch-all)
+        meta = json.loads(read(tdir / "templates.json"))
+        files = [p for p in files if (meta.get(p.name) or {}).get("auto", True) is not False]
+    except (OSError, ValueError, AttributeError):
+        pass
     for p in files:
         if p.with_suffix(".txt").is_file():
             sync(p)

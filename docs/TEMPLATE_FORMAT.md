@@ -140,6 +140,7 @@ were unsure about so I can check it against my original.
   `pm`, `ml`/`data`, `av`/`robotics`, `quant`, `research`, `design` are recognized too). To set your own, add a
   `templates.json` next to your templates:
   `{ "swe.md": { "title": "Backend Engineering", "icon": "code" } }`. Icons: `code`, `sparkles`, `briefcase`, `car`,
-  `chart`, `flask`, `pen`, `file`.
+  `chart`, `flask`, `pen`, `file`. Add `"auto": false` to keep a template out of Auto's choices, for a catch-all
+  resume you pick by hand (e.g. one resume for employers that take a single resume across several roles).
 - Prefer editing in a plain `.txt`? Keep a `<name>.txt` next to `<name>.md` with the same content. Whichever of the two
   you saved last is copied over the other before every validation and run, so editing either one works.
