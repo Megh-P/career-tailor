@@ -2,7 +2,8 @@
 (exit 0 ok, 1 failure).
 
   python resume.py validate <template.md> [--render]       # dialect + structure check; --render also checks 1 page
-  python resume.py ats <template.md> <resume.md> --skills <skills.md>   # only Technical Skills may differ
+  python resume.py ats <template.md> <resume.md> --skills <skills.md> [--redact]   # only Technical Skills may differ
+                                                           # (--redact: Education dates may be removed, see redact())
   python resume.py sync <name[.md|.txt]>                   # fuse a .md/.txt pair: newer mtime is copied over the other
   python resume.py --test
 
@@ -169,9 +170,23 @@ def skill_lines(doc):
             for m in [SKILL.match(b[1])] if m}
 
 
-def ats(template_md, new_md, allowed):
-    """-> (errors, added, dropped, reorders). Everything but Technical Skills must equal the template."""
-    t, n, errs = parse(template_md), parse(new_md), []
+def redact(md):
+    """Drop the dates from Education entries ("### **School**, City || May 2029" -> "### **School**, City"). Some
+    employers (Microsoft, for U.S. applicants) ask you to remove dates of attendance at or graduation from school."""
+    out, sec = [], ""
+    for line in md.split("\n"):
+        if line.startswith("## "):
+            sec = line[3:].strip().lower()
+        if sec == "education" and line.startswith("### ") and "||" in line:
+            line = line.split("||")[0].rstrip()
+        out.append(line)
+    return "\n".join(out)
+
+
+def ats(template_md, new_md, allowed, redacted=False):
+    """-> (errors, added, dropped, reorders). Everything but Technical Skills must equal the template (with its
+    Education dates removed when redacted: the one other change a resume may carry, declared, never silent)."""
+    t, n, errs = parse(redact(template_md) if redacted else template_md), parse(new_md), []
     if t["head"] != n["head"]:
         errs.append("header/contact lines changed")
     if [s.lower() for s, _ in t["sections"]] != [s.lower() for s, _ in n["sections"]]:
@@ -298,6 +313,8 @@ def selftest():
     assert repeated_openers(GOOD) == []
     dup = GOOD.replace("- Trained 20 networks in PyTorch", "- Trained 20 networks in PyTorch\n- **Trained** a baseline")
     assert repeated_openers(dup) == ["Work Experience: 'trained' opens 2 bullets"], repeated_openers(dup)
+    edu = "# A\n\n## Education\n### **School**, City || May 2029\n\n## Work Experience\n### **Job** || Jan 2025\n- Did a thing\n"
+    assert redact(edu) == edu.replace(" || May 2029", ""), redact(edu)  # only Education dates go
     print("selftest ok")
 
 
@@ -319,10 +336,10 @@ def main(a):
             elif not rr["ok"]:
                 res["warnings"].append(f"test render failed: {rr['error']}")
         emit(res, res["ok"])
-    elif a[:1] == ["ats"] and len(a) == 5 and a[3] == "--skills":
+    elif a[:1] == ["ats"] and len(a) in (5, 6) and a[3] == "--skills" and a[5:] in ([], ["--redact"]):
         try:
             allowed = set().union(*parse_skills(read(a[4])))
-            errs, added, dropped, reo = ats(read(a[1]), read(a[2]), allowed)
+            errs, added, dropped, reo = ats(read(a[1]), read(a[2]), allowed, redacted=a[5:] == ["--redact"])
         except (OSError, UnicodeDecodeError, ValueError) as ex:
             emit({"ok": False, "errors": [f"{type(ex).__name__}: {ex}"], "added": [], "dropped": [], "reorders": []}, False)
         emit({"ok": not errs, "errors": errs, "added": added, "dropped": dropped, "reorders": reo}, not errs)

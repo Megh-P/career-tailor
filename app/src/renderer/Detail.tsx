@@ -103,13 +103,26 @@ function Review({ run, d }: { run: Run; d: Detail }) {
       {d.resume === null || !a ? (run.status === 'failed' ? null :
         <div className="alert alert-muted"><Icon name="alert" />No resume.md in the run folder, so there is nothing to diff.</div>
       ) : a.ok ? (
-        <div className="integrity ok">
-          <span className="integrity-icon"><Icon name="shield" size={18} /></span>
-          <div>
-            <strong>Only Technical Skills changed ✓</strong>
-            <p>resume.py ats compared resume.md to the {d.atsAgainst === 'snapshot' ? 'template as it was at run time' : 'current template'}: every other section is identical and every skill is in your skills file.</p>
+        <>
+          <div className="integrity ok">
+            <span className="integrity-icon"><Icon name="shield" size={18} /></span>
+            <div>
+              <strong>Only Technical Skills changed{run.redacted?.length ? ', plus the redaction below' : ''} ✓</strong>
+              <p>resume.py ats compared resume.md to the {d.atsAgainst === 'snapshot' ? 'template as it was at run time' : 'current template'}: every other section is identical and every skill is in your skills file.</p>
+            </div>
           </div>
-        </div>
+          {!!run.redacted?.length && (
+            <div className="integrity redacted">
+              <span className="integrity-icon"><Icon name="pen" size={18} /></span>
+              <div>
+                <strong>Redacted: {run.redacted.join(', ')}</strong>
+                <p>{run.company} asks U.S. applicants to remove dates of attendance at or graduation from school, so the
+                  date on each Education entry was removed. It shows as a changed Education line in the full diff below;
+                  the integrity check allows exactly this change and nothing else.</p>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="integrity bad" role="alert">
           <span className="integrity-icon"><Icon name="alert" size={18} /></span>

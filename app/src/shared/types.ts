@@ -62,6 +62,8 @@ export interface Run {
   auto_reason?: string
   /** the job posting's URL, when known */
   url?: string
+  /** changes allowed beyond Technical Skills because the employer asks for them, e.g. ["Education dates"] */
+  redacted?: string[]
   /** set when you pressed Applied; link = the entry the agent logged it to */
   applied?: { date: string; ok: boolean; link: string; error: string }
 }

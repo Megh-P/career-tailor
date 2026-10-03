@@ -12,7 +12,7 @@ import argparse, datetime, json, os, pathlib, re, shutil, subprocess, sys, time,
 
 BACKEND = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND))
-from resume import ats, validate_file, read, skills_from_template, parse_skills, sync  # noqa: E402
+from resume import ats, redact, validate_file, read, skills_from_template, parse_skills, sync  # noqa: E402
 from render import render  # noqa: E402
 
 DEFAULT_NAME_FORMAT = "{name} Resume - {company} {role}"
@@ -76,9 +76,21 @@ def run_agent(agent, model, prompt, cwd, add_dirs, log, schema=SCHEMA, tools=TOO
     return out.get("structured_output") or json.loads(out.get("result") or "{}")
 
 
-def finish_locally(template, skills, job):
-    """Run the ats check and the render here, for when the agent wrote resume.md but couldn't run them."""
-    errs = ats(read(template), read(job / "resume.md"), set().union(*parse_skills(read(skills))))[0]
+# Employers that ask applicants to remove dates of attendance/graduation (Microsoft, U.S. applicants). Their resumes
+# get Education dates removed after tailoring; the run records it and the ats check allows exactly that change.
+REDACT_EDUCATION_DATES = ("microsoft",)
+
+
+def needs_redaction(company):
+    return any(re.match(rf"{c}\b", company.strip().lower()) for c in REDACT_EDUCATION_DATES)
+
+
+def finish_locally(template, skills, job, redacted=False):
+    """Run the ats check and the render here: when the agent wrote resume.md but couldn't run them, or after
+    redacting Education dates."""
+    if redacted:
+        (job / "resume.md").write_text(redact(read(job / "resume.md")), encoding="utf-8")
+    errs = ats(read(template), read(job / "resume.md"), set().union(*parse_skills(read(skills))), redacted)[0]
     if errs:
         raise RuntimeError("the agent's resume.md fails the ats check: " + "; ".join(errs))
     rr = render(job / "resume.md", job / "resume.pdf")
@@ -185,6 +197,9 @@ def run(a):
                 raise RuntimeError(res.get("error") or f"the agent reported failure and wrote no resume.md")
             pdf = finish_locally(template, skills, job)  # the agent wrote the resume but stopped short of checking it
             rec["error"] = ""
+        if needs_redaction(res["company"]):
+            pdf = finish_locally(template, skills, job, redacted=True)
+            rec["redacted"] = ["Education dates"]
         dest_dir = pathlib.Path(a.out_dir).resolve()
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest = dest_dir / out_name(a.name_format, clean(v["name"]), clean(res["company"]), clean(res["role"]))
@@ -249,6 +264,7 @@ def selftest():
         assert posting_url(d, d / "jd.txt") == "https://x.com/j/1", posting_url(d, d / "jd.txt")
         (d / "jd.txt").write_text(" https://y.com/2 \n", encoding="utf-8")
         assert posting_url(d, d / "jd.txt") == "https://y.com/2"
+    assert needs_redaction("Microsoft") and needs_redaction("Microsoft Research") and not needs_redaction("Microstrategy")
     print("selftest ok")
 
 
