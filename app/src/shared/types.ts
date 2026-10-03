@@ -64,6 +64,8 @@ export interface Run {
   url?: string
   /** changes allowed beyond Technical Skills because the employer asks for them, e.g. ["Education dates"] */
   redacted?: string[]
+  /** a one-off resume that deviates from its template on purpose: what changed, shown instead of a failed check */
+  custom?: string[]
   /** set when you pressed Applied; link = the entry the agent logged it to */
   applied?: { date: string; ok: boolean; link: string; error: string }
 }

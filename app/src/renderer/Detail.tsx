@@ -123,6 +123,16 @@ function Review({ run, d }: { run: Run; d: Detail }) {
             </div>
           )}
         </>
+      ) : run.custom?.length ? (
+        <div className="integrity redacted">
+          <span className="integrity-icon"><Icon name="pen" size={18} /></span>
+          <div>
+            <strong>Custom resume: deviates from the template on purpose</strong>
+            <ul>{run.custom.map((c) => <li key={c}>{c}</li>)}</ul>
+            {!!run.redacted?.length && <p>Also redacted: {run.redacted.join(', ')}.</p>}
+            <p>The integrity check flags exactly these: {a.errors.join('; ')}. Every change shows in the full diff below.</p>
+          </div>
+        </div>
       ) : (
         <div className="integrity bad" role="alert">
           <span className="integrity-icon"><Icon name="alert" size={18} /></span>
@@ -133,7 +143,7 @@ function Review({ run, d }: { run: Run; d: Detail }) {
         </div>
       )}
 
-      {a?.ok && (
+      {(a?.ok || !!run.custom?.length) && a && (
         <Section title="Skill changes" icon="code">
           <div className="chip-rows">
             <ChipRow label="Added" items={a.added} kind="add" />
