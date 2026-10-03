@@ -1,6 +1,6 @@
 // Scheduled job scan: runs backend/scan.py once per time window (e.g. noon and evening), from the tray, all day.
 // Config: <userData>/routine.json (created with defaults; set "enabled" and fill in "profile").
-import { app, Menu, Notification, powerMonitor, shell, Tray } from 'electron'
+import { app, Menu, nativeImage, Notification, powerMonitor, shell, Tray, type NativeImage } from 'electron'
 import { spawn } from 'child_process'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
@@ -112,6 +112,13 @@ function refreshTray() {
   ]))
 }
 
+/** The local logo (renderer/public/logo.png, untracked) at `size` px, or null without one. Loading it directly beats
+ *  the .exe's icon, which Windows caches per path and keeps showing stale after an icon change. */
+export function appIcon(size: number): NativeImage | null {
+  const img = nativeImage.createFromPath(join(__dirname, '../renderer/logo.png'))
+  return img.isEmpty() ? null : img.resize({ width: size, height: size, quality: 'best' })
+}
+
 let showWindow: () => void = () => {}
 let onScanDone: () => void = () => {}
 
@@ -122,7 +129,7 @@ export async function startRoutine(show: () => void, scanDone: () => void) {
   onScanDone = scanDone
   const cfg = config()
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: cfg.enabled && cfg.startup, args: ['--background'] })
-  tray = new Tray(await app.getFileIcon(process.execPath, { size: 'small' }))
+  tray = new Tray(appIcon(16) ?? await app.getFileIcon(process.execPath, { size: 'small' }))
   tray.on('click', () => show())
   refreshTray()
   const tick = () => {

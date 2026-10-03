@@ -9,7 +9,7 @@ import {
   BACKEND, DOCS_URL, PY_ENV, getSettings, installTectonic, knownTemplates, lastJson, loadSettings, preflight, py,
   saveSettings, scanTemplates, skillsPath, watchTemplates,
 } from './setup'
-import { startRoutine } from './routine'
+import { appIcon, startRoutine } from './routine'
 
 // Dev/test only: point userData and Documents at a scratch folder so a test launch never touches real settings.
 if (process.env['CAREER_TAILOR_HOME']) {
@@ -316,6 +316,7 @@ function showWindow() {
   }
   win = new BrowserWindow({
     title: 'Career Tailor',
+    ...(appIcon(256) ? { icon: appIcon(256)! } : {}),
     width: 1280,
     height: 820,
     minWidth: 980,
