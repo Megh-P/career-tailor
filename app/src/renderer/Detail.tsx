@@ -7,11 +7,13 @@ export function RunDetail({ run }: { run: Run }) {
   const [d, setD] = useState<Detail | null>(null)
   const [err, setErr] = useState('')
   const [openErr, setOpenErr] = useState('')
-  const [applying, setApplying] = useState(false)
+  const [clicked, setClicked] = useState(false)
+  const applying = clicked || !!run.applying
   const [applied, setApplied] = useState(run.applied)
   useEffect(() => setApplied(run.applied), [run.id, run.applied])
+  useEffect(() => setClicked(false), [run.id]) // another run's click is not this one's; run.applying carries the truth
   const markApplied = async () => {
-    setApplying(true)
+    setClicked(true)
     setOpenErr('')
     try {
       const a = await window.api.applied(run.id)
@@ -20,7 +22,7 @@ export function RunDetail({ run }: { run: Run }) {
     } catch (e) {
       setOpenErr(String((e as Error)?.message ?? e))
     }
-    setApplying(false)
+    setClicked(false)
   }
   const finished = run.status === 'done' || run.status === 'failed'
 

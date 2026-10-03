@@ -66,6 +66,8 @@ export interface Run {
   redacted?: string[]
   /** a one-off resume that deviates from its template on purpose: what changed, shown instead of a failed check */
   custom?: string[]
+  /** the Applied log is running right now (kept in the main process, so it survives switching runs) */
+  applying?: boolean
   /** set when you pressed Applied; link = the entry the agent logged it to */
   applied?: { date: string; ok: boolean; link: string; error: string }
 }

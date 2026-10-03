@@ -153,6 +153,23 @@ def parse_skills(text):
     return out["skills"], out["adjacent"]
 
 
+ADJ_KINDS = ("same as", "part of", "describes", "named in")  # see prompts/skill-rules.md
+
+
+def allowed_skills(text):
+    """-> (skills a resume may list, {adjacent skill: why it's refused}). An '## Adjacent' entry counts only when its
+    note declares one of ADJ_KINDS with evidence ("- C · part of: C++ work"); "near:", "sibling", etc. don't."""
+    sk, adj = parse_skills(text)
+    ok, refused = set(sk), {}
+    for name, note in adj.items():
+        kind, _, evidence = note.partition(":")
+        if kind.strip().lower() in ADJ_KINDS and evidence.strip():
+            ok.add(name)
+        else:
+            refused[name] = f"Adjacent entry must be '{name} · <{' | '.join(ADJ_KINDS)}>: <evidence>' (has {note!r})"
+    return ok, refused
+
+
 def skills_from_template(template_md):
     """Seed text for a skills file: every skill in the template's skill lines."""
     items = []
@@ -183,7 +200,7 @@ def redact(md):
     return "\n".join(out)
 
 
-def ats(template_md, new_md, allowed, redacted=False):
+def ats(template_md, new_md, allowed, redacted=False, refused=None):
     """-> (errors, added, dropped, reorders). Everything but Technical Skills must equal the template (with its
     Education dates removed when redacted: the one other change a resume may carry, declared, never silent)."""
     t, n, errs = parse(redact(template_md) if redacted else template_md), parse(new_md), []
@@ -199,7 +216,7 @@ def ats(template_md, new_md, allowed, redacted=False):
         errs.append(f"skill labels must stay {sorted(ts)}")
     flat = [i for items in ns.values() for i in items]
     errs += [f"duplicate skill: {i}" for i in sorted({i for i in flat if flat.count(i) > 1})]
-    errs += [f"not in skills file: {i}" for i in flat if i not in allowed]
+    errs += [(refused or {}).get(i, f"not in skills file: {i}") for i in flat if i not in allowed]
     old = [i for items in ts.values() for i in items]
     added, dropped = [i for i in flat if i not in old], [i for i in old if i not in flat]
     reorders = [{"label": lab, "before": ts.get(lab, []), "after": items} for lab, items in ns.items()
@@ -294,6 +311,12 @@ def selftest():
     # skills file
     sk, adj = parse_skills("## Skills\n- Python · main\n- C++\n- Git\n- SQL\n\n## Adjacent\n- Rust · near: C++ work\n")
     assert sk == {"Python": "main", "C++": "", "Git": "", "SQL": ""} and adj == {"Rust": "near: C++ work"}
+    # adjacent entries count only with a declared kind (prompts/skill-rules.md): C is part of C++; Rust is not near
+    ok, refused = allowed_skills("## Skills\n- C++\n\n## Adjacent\n- C · part of: C++ extension\n"
+                                 "- Rust · near: C++ work\n- Go · describes:\n")
+    assert ok == {"C++", "C"} and set(refused) == {"Rust", "Go"}, (ok, refused)
+    errs = ats(GOOD, GOOD.replace("Python, C++", "Python, Rust, C++"), ok | {"Python", "Git"}, refused=refused)[0]
+    assert len(errs) == 1 and "Adjacent entry must be" in errs[0], errs
     assert parse_skills(skills_from_template(GOOD))[0].keys() == {"Python", "C++", "Git"}
     allowed = set(sk) | set(adj)
     # ats
@@ -338,8 +361,8 @@ def main(a):
         emit(res, res["ok"])
     elif a[:1] == ["ats"] and len(a) in (5, 6) and a[3] == "--skills" and a[5:] in ([], ["--redact"]):
         try:
-            allowed = set().union(*parse_skills(read(a[4])))
-            errs, added, dropped, reo = ats(read(a[1]), read(a[2]), allowed, redacted=a[5:] == ["--redact"])
+            allowed, refused = allowed_skills(read(a[4]))
+            errs, added, dropped, reo = ats(read(a[1]), read(a[2]), allowed, a[5:] == ["--redact"], refused)
         except (OSError, UnicodeDecodeError, ValueError) as ex:
             emit({"ok": False, "errors": [f"{type(ex).__name__}: {ex}"], "added": [], "dropped": [], "reorders": []}, False)
         emit({"ok": not errs, "errors": errs, "added": added, "dropped": dropped, "reorders": reo}, not errs)

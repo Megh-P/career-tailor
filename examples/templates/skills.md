@@ -4,8 +4,10 @@ The tailoring agent may only put skills from this file into the Technical Skills
 Format: `- Skill · evidence note` (the text after the dot is for you; only the skill name is matched).
 
 Skills: things you have actually done. Listed in the resume, or backed by a project or job.
-Adjacent: things you do not list today but are close to something you have done. The agent may add one
-for a job that asks for it, and reports it as an "adjacent" addition so you can check it before sending.
+Adjacent: skills you did use but haven't written down, each with a kind and the evidence:
+`same as` (another name), `part of` (using a listed skill means using it), `describes` (names work a bullet
+shows), `named in` (the tool appears in a bullet). Never a different tool you haven't used: Go is not
+"near" C++. See backend/prompts/skill-rules.md.
 
 Anything not in either list is never added. Edit freely.
 
@@ -36,7 +38,7 @@ Anything not in either list is never added. Edit freely.
 - CI/CD · GitHub Actions
 
 ## Adjacent
-- MySQL · near: PostgreSQL and SQLite in projects
-- Go · near: C++ systems work and Kafka services
-- AWS · near: Docker deployments at Brightwave
-- GraphQL · near: REST APIs in TrailSync and Brightwave
+- Postgres · same as: PostgreSQL
+- C · part of: C++ (Quill compiler)
+- Data Pipelines · describes: Kafka inventory pipeline at Brightwave
+- Event Streaming · describes: Kafka inventory pipeline at Brightwave

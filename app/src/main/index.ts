@@ -72,6 +72,7 @@ function list(): Run[] {
     const disk = all.get(id)
     if (!disk || r.status === 'queued' || r.status === 'running') all.set(id, { ...disk, ...r })
   }
+  for (const id of applying) { const r = all.get(id); if (r) all.set(id, { ...r, applying: true }) }
   return [...all.values()].sort((a, b) => (b.started ?? '').localeCompare(a.started ?? ''))
 }
 
@@ -138,15 +139,25 @@ function tailor(template: string, jd: string, url = ''): string {
 const find = (id: string): Rec | undefined => history().get(id) ?? live.get(id)
 
 /** You applied: mark the run and let the agent log it per your "When I apply" instruction (applied.py). */
+const applying = new Set<string>() // runs whose Applied log is in flight; survives leaving the run page
+
 async function applied(id: string): Promise<Run['applied']> {
+  if (applying.has(id)) throw new Error('Already logging this application.')
   const r = find(id)
   const folder = r && folderOf(r)
   const file = folder ? join(folder, 'run.json') : ''
   if (!file || !existsSync(file)) throw new Error('This run has no run.json to mark (still running, or its folder is gone).')
   const s = getSettings()
-  const res = await py('applied.py', [file, '--instruction', s.appliedLog, '--tools', s.appliedTools], { timeout: 600_000 })
-  const out = lastJson<Run['applied']>(res.stdout)
+  applying.add(id)
   changed()
+  let res
+  try {
+    res = await py('applied.py', [file, '--instruction', s.appliedLog, '--tools', s.appliedTools], { timeout: 600_000 })
+  } finally {
+    applying.delete(id)
+    changed()
+  }
+  const out = lastJson<Run['applied']>(res.stdout)
   if (!out) throw new Error((res.stderr || res.stdout).trim().slice(-600) || `applied.py exited with code ${res.code}`)
   return out
 }
@@ -160,13 +171,14 @@ async function ats(templatePath: string, resumePath: string, redacted = false): 
     : { ok: false, errors: [(r.stderr || r.stdout).trim().slice(-600) || `resume.py ats exited with code ${r.code}`], added: [], dropped: [], reorders: [] }
 }
 
-/** `- C · near: C++ (...)` lines under ## Adjacent in the skills file */
+/** `- C · part of: C++ (...)` lines under ## Adjacent in the skills file: why each adjacent skill is allowed */
 function nearNotes(skills: string[]): Record<string, string> {
   const text = readText(skillsPath()) ?? ''
   const adj = text.split(/^## Adjacent.*$/m)[1]?.split(/^## /m)[0] ?? ''
   const notes: Record<string, string> = {}
   for (const line of adj.split('\n')) {
-    const m = line.match(/^- (.+?) · near: (.+)$/)
+    // "- C · part of: C++ work" (backend/prompts/skill-rules.md); older "near:" lines show as-is
+    const m = line.match(/^- (.+?) · ((?:same as|part of|describes|named in|near): .+)$/i)
     if (m) notes[m[1].trim().toLowerCase()] = m[2].trim()
   }
   return Object.fromEntries(skills.map((s) => [s, notes[s.trim().toLowerCase()] ?? '']))

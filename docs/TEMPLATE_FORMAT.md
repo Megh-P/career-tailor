@@ -87,14 +87,17 @@ one is generated from your template's skill lines.
 - Docker · dev environment at Brightwave
 
 ## Adjacent
-- MySQL · near: PostgreSQL and SQLite in projects
+- C · part of: C++ (Quill compiler)
 ```
 
 - `## Skills`: things you have actually done. One per line, `- Skill · evidence note`. The evidence note is for
   you; only the skill name is matched.
-- `## Adjacent`: skills you have not used directly but are close to something you have. The agent may add one when a
-  job asks for it, and reports it as an adjacent addition so you can review it before applying. Write what it is
-  near, for example `- Go · near: C++ systems work`. Be honest here; you are the one answering interview questions.
+- `## Adjacent`: skills you did use but haven't listed, as `- Skill · <kind>: <evidence>`. Kinds: `same as` (another
+  name for a listed skill), `part of` (using a listed skill means using this one: C with C++, SQL with SQLite),
+  `describes` (an umbrella term for work a bullet shows: Unit Testing for pytest suites), `named in` (the tool appears
+  in a bullet). The agent may add entries when a job asks, and reports each one. A different tool you haven't used
+  (Go because of C++, TensorFlow because of PyTorch) is never allowed, and an entry without a kind is refused by the
+  ats check. The full rules the agent follows: `backend/prompts/skill-rules.md`.
 
 You can split skills into several `##` sections (`## Languages`, `## Tools`, ...); every section counts as skills
 except `## Adjacent`, and except sections whose title contains "domain", "not listed", or "ignore" (use those for

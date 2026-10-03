@@ -12,7 +12,7 @@ import argparse, datetime, json, os, pathlib, re, shutil, subprocess, sys, time,
 
 BACKEND = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND))
-from resume import ats, redact, validate_file, read, skills_from_template, parse_skills, sync  # noqa: E402
+from resume import allowed_skills, ats, redact, validate_file, read, skills_from_template, parse_skills, sync  # noqa: E402
 from render import render  # noqa: E402
 
 DEFAULT_NAME_FORMAT = "{name} Resume - {company} {role}"
@@ -90,7 +90,8 @@ def finish_locally(template, skills, job, redacted=False):
     redacting Education dates."""
     if redacted:
         (job / "resume.md").write_text(redact(read(job / "resume.md")), encoding="utf-8")
-    errs = ats(read(template), read(job / "resume.md"), set().union(*parse_skills(read(skills))), redacted)[0]
+    allowed, refused = allowed_skills(read(skills))
+    errs = ats(read(template), read(job / "resume.md"), allowed, redacted, refused)[0]
     if errs:
         raise RuntimeError("the agent's resume.md fails the ats check: " + "; ".join(errs))
     rr = render(job / "resume.md", job / "resume.pdf")
@@ -181,6 +182,7 @@ def run(a):
         prompt = (BACKEND / "prompts" / "tailor.md").read_text(encoding="utf-8").format(
             date=today, backend=BACKEND.as_posix(), template=template.as_posix(), skills=skills.as_posix(),
             job_dir=job.as_posix(), jd=jd.as_posix())
+        prompt += "\n\n" + (BACKEND / "prompts" / "skill-rules.md").read_text(encoding="utf-8")  # literal, not .format()
         try:
             res = run_agent(a.agent, a.model, prompt, job, [BACKEND, template.parent, skills.parent], job / "agent.log")
         except subprocess.TimeoutExpired:  # a slow machine; the agent may have written resume.md already

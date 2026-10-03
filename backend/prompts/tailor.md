@@ -36,15 +36,13 @@ libraries, tools, platforms, and short technique names ("unit testing", "data st
 name a recruiter would type ("well-tested code" -> Unit Testing); keep the posting's spelling when it already is one.
 Skip domains ("fintech"), soft skills, and degrees. For each posting skill:
 
-- Listed in `## Skills` of the skills file: use it.
-- Same thing as a listed skill, different spelling ("Postgres" vs "PostgreSQL"): append
-  `- <posting spelling> · near: <listed spelling> (same thing)` to `## Adjacent` in the skills file, and use it.
-- Not listed, but remotely near something concrete in the template's own content (a sibling framework, the language
-  under a tool used there, a technique its bullets imply): append `- <Skill> · near: <the template entry or skill
-  and what it shows>` to `## Adjacent` and use it. Report it under new_adjacent. The `near:` note must name something
-  real in the template. "Could learn it" is not near.
-- A different programming language is never near (C++ does not make Rust near) unless the template shows code in it.
-- Nothing in the template is near it: it is a gap. Never add a gap. Report it under gaps.
+- Listed in `## Skills` of the skills file, or in `## Adjacent` with a kind (`same as`, `part of`, `describes`,
+  `named in`): use it.
+- Not listed: it may be added only if it is one of the four kinds in "Rules for adding a skill" at the end of this
+  prompt. Then append `- <posting spelling> · <kind>: <evidence>` to `## Adjacent` in the skills file, use it, and
+  report it under new_adjacent. Adjacent entries written as `near:` or without evidence don't count; the ats check
+  refuses them.
+- Otherwise it is a gap: never list it, report it under gaps. When unsure, it is a gap.
 
 ## 3. Rewrite Technical Skills (keep the same labels; lines may be reordered)
 
@@ -72,11 +70,11 @@ skills (step 3 rule) and re-render. Never touch other sections, fonts, or margin
 
 ## 5. Write `{job_dir}/changes.md` (15 lines max)
 
-Template used, the ats result (added / dropped / reorders), new adjacent skills with their `near:` notes (and that they
+Template used, the ats result (added / dropped / reorders), new adjacent skills with their kind and evidence (and that they
 were appended to the skills file), and gaps (posting skills with no neighbor in the template).
 
 ## 6. Return structured output
 
 ok (true only if ats and render both passed), company, role, pdf (absolute path of `{job_dir}/resume.pdf`),
 skills_added (skills now in Technical Skills that the template did not have), new_adjacent (the Adjacent skills you
-appended, each as "Skill · near: ..."), gaps, and error (empty unless ok is false).
+appended, each as "Skill · <kind>: <evidence>"), gaps, and error (empty unless ok is false).
