@@ -162,8 +162,51 @@ def fetch_posting(url, mirror="", title=""):
     return "", err
 
 
-def norm(url):
-    return (url or "").strip().rstrip("/").lower()
+def job_key(url):
+    """The posting's identity, whichever board linked it and however: <site>:<job id>. Locale segments (/en-CA/),
+    tracking params, and title wording don't matter. Greenhouse ids and Ashby/Lever UUIDs are global, so a company
+    page (?gh_jid=123) and its board (greenhouse.io/x/jobs/123) match. No recognizable id: the cleaned URL."""
+    if not url:
+        return ""
+    p = urllib.parse.urlparse(url.strip())
+    host = p.netloc.lower().removeprefix("www.")
+    path = re.sub(r"/[a-z]{2}-[A-Z]{2}(?=/)", "", p.path)
+    q = {k.lower(): v for k, v in urllib.parse.parse_qs(p.query).items()}
+    if q.get("gh_jid") or "greenhouse.io" in host:
+        jid = q.get("gh_jid", [None])[0] or (re.search(r"/jobs/(\d+)", path) or [None, None])[1]
+        if jid:
+            return f"greenhouse:{jid}"
+    u = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", path, re.I)
+    if u:
+        return f"uuid:{u.group(0).lower()}"
+    site = host.split(".")[0] if any(s in host for s in ("myworkdayjobs", "icims", "eightfold", "oraclecloud")) else host
+    for pat in (r"_((?:JR|R|REQ)[-_]?\d[\w-]*)$",  # Workday: ..._JR-202621695, _R51031-1
+                r"_(\d{5,}(?:-\d+)?)$",             # Workday: ..._591469
+                r"/jobs?/(\d{4,})"):                 # iCIMS, Amazon, Eightfold, Oracle, ...
+        m = re.search(pat, path.rstrip("/"), re.I)
+        if m:
+            return f"{site}:{m.group(1).lower()}"
+    for k in ("jobid", "job_id", "id"):
+        if q.get(k):
+            return f"{host}:{q[k][0].lower()}"
+    return f"{host}{path.rstrip('/').lower()}"
+
+
+def norm(url):  # every "same posting?" comparison in a scan goes through here
+    return job_key(url)
+
+
+def tailored_keys(work_dir):
+    """job keys of every posting already tailored (any run.json with status done), from scans or the app."""
+    out = {}
+    for f in pathlib.Path(work_dir).glob("*/run.json"):
+        try:
+            r = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if r.get("status") == "done" and r.get("url"):
+            out[job_key(r["url"])] = f.parent.name
+    return out
 
 
 def included(row, include):
@@ -422,15 +465,23 @@ def run(a):
         lines.append(f"{datetime.datetime.now():%H:%M:%S} {m}")
     model, notes = a.model, []
 
+    if state.get("seen") and state.get("seen_keys") != 2:  # older states keyed "seen" by URL: re-key by job id
+        state["seen"] = {norm(u): t for u, t in state["seen"].items()}
+        state["seen_keys"] = 2
     backlog = state.get("backlog", [])
     rows, counts = collect(cfg, state, log)
     if backlog:
         counts["Backlog"] = len(backlog)
     rows = [r for r in backlog if norm(r["url"]) not in {norm(x["url"]) for x in rows}] + rows
+    done = tailored_keys(a.work_dir)  # the same job id, tailored before: skip it (an unrecognized id still goes)
+    again = [r for r in rows if norm(r["url"]) in done]
+    if again:
+        counts["Already tailored"] = len(again)
+        rows = [r for r in rows if norm(r["url"]) not in done]
     if cfg.get("web_search", True) and not a.dry_run:
         try:
             extra = [r for r in web_search(cfg, rows, max(1, round((start - since) / 3600)), scan_dir, model)
-                     if norm(r["url"]) not in state["seen"]]
+                     if norm(r["url"]) not in state["seen"] and norm(r["url"]) not in done]
             counts["Web search"] = len(extra)
             rows += extra
         except Exception as ex:
@@ -527,6 +578,13 @@ def main(argv):
 
 
 def selftest():
+    wd = "https://generalmotors.wd5.myworkdayjobs.com{}/Careers_GM/job/Sunnyvale-CA/XMLNAME-2027-Intern---ML_JR-202621695"
+    assert job_key(wd.format("")) == job_key(wd.format("/en-CA")) == "generalmotors:jr-202621695"  # same job, 2 boards
+    assert job_key("https://www.pinterestcareers.com/jobs/?gh_jid=7838577") == \
+        job_key("https://job-boards.greenhouse.io/pinterest/jobs/7838577") == "greenhouse:7838577"
+    assert job_key("https://philips.wd3.myworkdayjobs.com/x/job/PA/intern_591469") == "philips:591469"
+    assert job_key(wd.format("").replace("202621695", "202621696")) != job_key(wd.format(""))  # different job id
+    assert job_key("https://example.com/careers/swe-intern") != job_key("https://example.com/careers/ml-intern")
     md = ("## CS underclassmen internships\n| Name | D | When |\n| --- | --- | --- |\n"
           "| [Explore](https://x.com/e) | 12 weeks | Fall |\n"
           "## Coding interview resources\n| [LeetCode](https://leetcode.com) | practice |\n")
@@ -590,9 +648,11 @@ def selftest():
 if __name__ == "__main__":
     if sys.argv[1:] == ["--test"]:
         selftest()
-    elif sys.argv[1:2] == ["--fetch"] and len(sys.argv) == 3:  # the app's Link box: python scan.py --fetch <url>
-        text, err = fetch_posting(sys.argv[2].strip())
-        print(json.dumps({"text": text, "error": err}, ensure_ascii=False))
+    elif sys.argv[1:2] == ["--fetch"] and len(sys.argv) in (3, 4):  # the app's Link box: --fetch <url> [<runs dir>]
+        url = sys.argv[2].strip()
+        before = tailored_keys(sys.argv[3]).get(job_key(url), "") if len(sys.argv) == 4 else ""
+        text, err = ("", "") if before else fetch_posting(url)
+        print(json.dumps({"text": text, "error": err, "tailored": before}, ensure_ascii=False))
     else:
         sys.exit(main(sys.argv[1:]))
 

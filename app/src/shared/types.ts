@@ -97,8 +97,9 @@ export type OpenTarget = 'pdf' | 'folder' | 'output' | 'log' | 'templates' | 'ru
 export interface Api {
   list(): Promise<Run[]>
   tailor(template: string, jd: string, url?: string): Promise<string>
-  /** a posting's text from its link (ATS APIs / the page), or why it couldn't be read */
-  fetchPosting(url: string): Promise<{ text: string; error: string }>
+  /** a posting's text from its link (ATS APIs / the page), or why it couldn't be read; tailored = the run folder if
+   *  this job id was already tailored (then nothing is fetched) */
+  fetchPosting(url: string): Promise<{ text: string; error: string; tailored: string }>
   applied(id: string): Promise<Run['applied']>
   detail(id: string): Promise<Detail>
   open(target: OpenTarget, id?: string): Promise<string>

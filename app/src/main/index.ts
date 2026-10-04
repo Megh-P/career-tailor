@@ -271,8 +271,8 @@ const pushTemplates = () => scanTemplates().then((t) => win?.webContents.send('t
 ipcMain.handle('runs:list', () => list())
 ipcMain.handle('runs:tailor', (_e, t: string, jd: string, url?: string) => tailor(t, jd, url))
 ipcMain.handle('posting:fetch', async (_e, url: string) => {
-  const r = await py('scan.py', ['--fetch', url], { timeout: 120_000 })
-  return lastJson<{ text: string; error: string }>(r.stdout) ?? { text: '', error: (r.stderr || r.stdout).trim().slice(-300) || 'fetch failed' }
+  const r = await py('scan.py', ['--fetch', url, runs()], { timeout: 120_000 })
+  return lastJson<{ text: string; error: string; tailored: string }>(r.stdout) ?? { text: '', error: (r.stderr || r.stdout).trim().slice(-300) || 'fetch failed', tailored: '' }
 })
 ipcMain.handle('runs:detail', (_e, id: string) => detail(id))
 ipcMain.handle('runs:applied', (_e, id: string) => applied(id))

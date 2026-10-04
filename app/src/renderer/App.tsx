@@ -133,11 +133,13 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
       }
       // Link mode: read each posting here; queue the ones that read, hand the first that didn't to Paste mode
       const failed: { url: string; error: string }[] = []
+      const dupes: string[] = []
       let last = ''
       for (const [i, u] of urls.entries()) {
         setBusy(urls.length > 1 ? `Reading ${i + 1} of ${urls.length}…` : 'Reading the posting…')
         const f = await window.api.fetchPosting(u)
-        if (f.text) last = await window.api.tailor(template.path, `${u}\n\n${f.text}`, u)
+        if (f.tailored) dupes.push(f.tailored) // same job id as an earlier run: don't tailor it again
+        else if (f.text) last = await window.api.tailor(template.path, `${u}\n\n${f.text}`, u)
         else failed.push({ url: u, error: f.error })
       }
       setLinks(failed.map((f) => f.url).join('\n'))
@@ -148,6 +150,9 @@ function Composer({ templates, onQueued, go }: { templates: TemplateInfo[] | nul
         setErr(`Couldn't read ${failed.length === 1 ? 'that page' : `${failed.length} of the links`} (${failed[0].error}). ` +
           `Paste the job description for ${failed[0].url}${failed.length > 1 ? '; the other failed links are still in the Link tab' : ''}.`)
       }
+      if (dupes.length && !failed.length)
+        setErr(`Already tailored (same job ID), skipped: ${dupes.join(', ')}. It's in the run list; ` +
+          'to tailor it again anyway, use Paste.')
       if (last) onQueued(last)
     } catch (e) {
       setErr(errText(e))
