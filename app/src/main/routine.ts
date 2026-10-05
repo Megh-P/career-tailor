@@ -66,11 +66,13 @@ function scan(label: string, onDone: () => void) {
     '--model', s.model, '--name-format', s.nameFormat, '--label', label,
     ...(cfg.reports_dir ? ['--reports-dir', cfg.reports_dir] : [])]
   const child = spawn(s.python, args, { cwd: BACKEND, env: PY_ENV, windowsHide: true })
+  const tick = setInterval(onDone, 15_000) // runs finish one by one during a scan: show them as they land
   let out = ''
   let err = ''
   child.stdout.on('data', (d) => (out += d))
   child.stderr.on('data', (d) => (err += d))
   const finish = () => {
+    clearInterval(tick)
     if (!running) return
     running = null
     const res = lastJson<Result>(out)

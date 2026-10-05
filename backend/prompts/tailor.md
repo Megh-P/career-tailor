@@ -14,7 +14,11 @@ template. Prefer Write/Edit for file edits. Run Python as `PYTHONIOENCODING=utf-
 ## 1. Intake: write `{job_dir}/job.md`
 
 You are a scribe, not an editor: copy what the posting says, never paraphrase requirements. Read `{jd}`. If it is
-only a URL, fetch it with WebFetch. If you cannot get the responsibilities and qualifications, return ok=false with the reason.
+only a URL, fetch it with WebFetch. If the posting has a title but no responsibilities or qualifications (some
+employers post only a program blurb), still tailor: take keywords from the job title and team name only, reorder
+skills already in the template, add no new skills (no Adjacent additions), and start `changes.md` with "Thin posting:
+no responsibilities or qualifications; skills reordered from the title only." Return ok=false only when there is no
+job title at all.
 
 `job.md` contains: `# <Company> · <Role>`, then `Location: ...` and `Link: <posting URL>` lines if known (the URL you fetched, or one in the description that points to this posting), then the responsibilities and
 qualifications verbatim (drop EEO text, benefits, company history). Then `## Keywords`: 10 to 20 exact phrases as they

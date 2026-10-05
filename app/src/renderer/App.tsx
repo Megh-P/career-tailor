@@ -14,6 +14,7 @@ export function App() {
   const [, setTick] = useState(0)
 
   const reload = useCallback(() => window.api.list().then(setRuns), [])
+  const [refreshing, setRefreshing] = useState(false)
   useEffect(() => { reload(); return window.api.onChange(reload) }, [reload])
   useEffect(() => { window.api.templates().then(setTemplates); return window.api.onTemplates(setTemplates) }, [])
 
@@ -57,7 +58,11 @@ export function App() {
           {nav('settings', 'settings', 'Settings')}
           {nav('setup', 'wrench', 'Setup', issues ? <span className="count count-bad">{issues}</span> : null)}
         </nav>
-        <div className="side-label">History{runs?.length ? <span className="count">{runs.length}</span> : null}</div>
+        <div className="side-label">History{runs?.length ? <span className="count">{runs.length}</span> : null}
+          <button className={`btn btn-sm btn-icon side-refresh ${refreshing ? 'spinning' : ''}`} title="Refresh: show runs that finished since"
+            aria-label="Refresh history" onClick={async () => { setRefreshing(true); await reload(); setRefreshing(false) }}>
+            <Icon name="refresh" size={13} className={refreshing ? 'spin' : undefined} /></button>
+        </div>
         <nav className="runs" aria-label="Runs">
           {runs === null && [0, 1, 2].map((i) => <div key={i} className="run-item skeleton" />)}
           {runs?.length === 0 && <p className="side-empty">No runs yet.</p>}

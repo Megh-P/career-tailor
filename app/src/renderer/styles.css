@@ -401,3 +401,5 @@ input.mono { font-size: 12.5px; }
 .integrity.redacted { margin-top: 8px; border-color: var(--accent); background: var(--accent-soft); }
 .integrity.redacted .integrity-icon { color: var(--accent-text); }
 .mark-img { object-fit: cover; background: #fff; border: 1px solid var(--border); padding: 0; }
+.side-label .side-refresh { margin-left: auto; width: 22px; height: 22px; padding: 0; color: var(--dim); }
+.side-label .side-refresh:hover { color: var(--text); }
