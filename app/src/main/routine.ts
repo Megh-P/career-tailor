@@ -5,10 +5,11 @@ import { spawn } from 'child_process'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { BACKEND, PY_ENV, getSettings, lastJson, skillsPath } from './setup'
+import type { RoutineStatus } from '../shared/types'
 
 interface Slot { label: string; from: string; to: string }
 interface Config { enabled: boolean; startup: boolean; slots: Slot[]; reports_dir?: string; [k: string]: unknown }
-interface Result { report: string; new: number; tailored: number; failed: number; error?: string }
+interface Result { report: string; new: number; tailored: number; failed: number; error?: string; counts?: Record<string, unknown> }
 
 const DEFAULTS = {
   enabled: false,
@@ -37,7 +38,8 @@ const DEFAULTS = {
 const file = (n: string) => join(app.getPath('userData'), n)
 const CONFIG = () => file('routine.json')
 const read = <T>(p: string, fallback: T): T => { try { return JSON.parse(readFileSync(p, 'utf-8')) } catch { return fallback } }
-const ran = () => read<{ slots: string[]; lastReport?: string; lastFinished?: string }>(file('routine-ran.json'), { slots: [] })
+const ran = () => read<{ slots: string[]; lastReport?: string; lastFinished?: string; last?: RoutineStatus['last'] }>(
+  file('routine-ran.json'), { slots: [] })
 
 export function config(): Config {
   if (!existsSync(CONFIG())) writeFileSync(CONFIG(), JSON.stringify(DEFAULTS, null, 2), 'utf-8')
@@ -50,6 +52,27 @@ const day = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 function due(cfg: Config, d = new Date()): Slot | undefined {
   const done = ran().slots
   return cfg.slots.find((s) => s.from <= hm(d) && hm(d) < s.to && !done.includes(`${day(d)} ${s.label}`))
+}
+
+/** When the next slot starts: the first one today or later that hasn't run and whose window hasn't closed. Inside its
+ *  window `at` is now (it starts at the next 5-minute check). `missed`: today's windows that closed without a scan. */
+export function routineStatus(): RoutineStatus {
+  const cfg = config()
+  const r = ran()
+  const now = new Date()
+  const slots = [...cfg.slots].sort((a, b) => a.from.localeCompare(b.from))
+  let next: RoutineStatus['next'] = null
+  for (let d = 0; d < 3 && !next; d++) {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d)
+    const s = slots.find((s) => !r.slots.includes(`${day(date)} ${s.label}`) && (d > 0 || hm(now) < s.to))
+    if (!s) continue
+    const [h, m] = s.from.split(':').map(Number)
+    const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m)
+    next = { label: s.label, at: (at < now ? now : at).toISOString() }
+  }
+  const missed = slots.filter((s) => hm(now) >= s.to && !r.slots.includes(`${day(now)} ${s.label}`)).map((s) => s.label)
+  return { enabled: cfg.enabled, running: running && { label: running.label, since: running.since.toISOString() },
+    next: cfg.enabled ? next : null, missed: cfg.enabled ? missed : [], last: r.last, report: r.lastReport ?? '' }
 }
 
 let tray: Tray | null = null
@@ -78,8 +101,13 @@ function scan(label: string, onDone: () => void) {
     const res = lastJson<Result>(out)
     if (res?.error?.startsWith('another scan')) { refreshTray(); return } // a manual scan is running: retry next tick
     const r = ran()
+    // boards that couldn't be fetched (their postings wait for the next scan) and a scan that crashed show in the app
+    const warnings = Object.entries(res?.counts ?? {}).filter(([, v]) => String(v).startsWith('error')).map(([k]) => `${k} unreachable`)
+    const last = { finished: new Date().toISOString(), label, tailored: res?.tailored ?? 0, failed: res?.failed ?? 0,
+      error: res ? res.error ?? '' : err.trim().split('\n').pop()?.slice(0, 200) || 'scan crashed (see routine-last.log)',
+      warnings }
     writeFileSync(file('routine-ran.json'), JSON.stringify({ slots: [...r.slots.slice(-20), `${day(new Date())} ${label}`],
-      lastReport: res?.report ?? r.lastReport, lastFinished: new Date().toISOString() }), 'utf-8')
+      lastReport: res?.report ?? r.lastReport, lastFinished: last.finished, last }), 'utf-8')
     writeFileSync(file('routine-last.log'), `${out}\n--- stderr ---\n${err}`, 'utf-8')
     const n = res
       ? new Notification({ title: `Job scan (${label}): ${res.tailored} tailored`,

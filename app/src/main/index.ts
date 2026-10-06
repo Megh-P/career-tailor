@@ -9,7 +9,7 @@ import {
   BACKEND, DOCS_URL, PY_ENV, getSettings, installTectonic, knownTemplates, lastJson, loadSettings, preflight, py,
   saveSettings, scanTemplates, skillsPath, watchTemplates,
 } from './setup'
-import { appIcon, startRoutine } from './routine'
+import { appIcon, routineStatus, startRoutine } from './routine'
 
 // Dev/test only: point userData and Documents at a scratch folder so a test launch never touches real settings.
 if (process.env['CAREER_TAILOR_HOME']) {
@@ -269,6 +269,7 @@ async function pick(kind: 'folder' | 'file', current: string) {
 const pushTemplates = () => scanTemplates().then((t) => win?.webContents.send('templates:changed', t))
 
 ipcMain.handle('runs:list', () => list())
+ipcMain.handle('routine:status', () => routineStatus())
 ipcMain.handle('runs:tailor', (_e, t: string, jd: string, url?: string) => tailor(t, jd, url))
 ipcMain.handle('posting:fetch', async (_e, url: string) => {
   const r = await py('scan.py', ['--fetch', url, runs()], { timeout: 120_000 })

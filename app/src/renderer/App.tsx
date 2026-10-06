@@ -1,10 +1,58 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { Check, Run, TemplateInfo } from '../shared/types'
+import type { Check, RoutineStatus, Run, TemplateInfo } from '../shared/types'
 import { RunDetail } from './Detail'
 import { SettingsView, SetupView, StatusBadge, TemplatesView } from './Views'
 import { Icon, PageHead, elapsed, errText, runTitle, templateName, tplIcon, when, type IconName } from './ui'
 
 type View = 'compose' | 'templates' | 'settings' | 'setup' | { run: string }
+
+const span = (ms: number) => {
+  const m = Math.max(0, Math.round(ms / 60000))
+  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`
+}
+const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+/** The auto-scan, live: running (and for how long), else a countdown to the next slot, plus anything wrong with the
+ *  last scan (crash, failed tailors, unreachable boards) or a window today that passed without a scan. */
+function ScanStatus() {
+  const [s, setS] = useState<RoutineStatus | null>(null)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const load = () => window.api.routine().then(setS)
+    load()
+    const poll = setInterval(load, 20_000)
+    const tick = setInterval(() => setTick((n) => n + 1), 1000)
+    const off = window.api.onChange(load)
+    return () => { clearInterval(poll); clearInterval(tick); off() }
+  }, [])
+  if (!s) return null
+  const now = Date.now()
+  const last = s.last
+  const problems = [
+    ...(last?.error ? [`Last scan error: ${last.error}`] : []),
+    ...(last?.failed ? [`${last.failed} tailor${last.failed > 1 ? 's' : ''} failed last scan`] : []),
+    ...(last?.warnings ?? []),
+    ...s.missed.map((m) => `Today's ${m} scan didn't run (PC asleep or app closed?)`),
+  ]
+  const [state, head, sub] = s.running
+    ? ['running', `Scanning · ${s.running.label}`, `started ${clock(s.running.since)} · ${span(now - Date.parse(s.running.since))}`]
+    : !s.enabled ? ['off', 'Auto-scan off', 'turn it on in routine settings (tray menu)']
+    : s.next && Date.parse(s.next.at) <= now + 1000 ? ['soon', `Next scan · ${s.next.label}`, 'starting within 5 min']
+    : s.next ? ['idle', `Next scan · ${s.next.label}`, `in ${span(Date.parse(s.next.at) - now)} · ${clock(s.next.at)}`]
+    : ['off', 'No scan scheduled', '']
+  return (
+    <button className={`scan-status scan-${state} ${problems.length ? 'scan-bad' : ''}`} disabled={!s.report}
+      title={s.report ? 'Open the latest scan report' : undefined} onClick={() => window.api.openPath(s.report)}>
+      <span className={`dot ${state === 'running' ? 'dot-running' : problems.length ? 'dot-failed' : 'dot-done'}`} />
+      <span className="run-text">
+        <span className="scan-head">{head}</span>
+        {sub && <span className="run-sub">{sub}</span>}
+        {last && !s.running && <span className="run-sub">last: {last.label} {clock(last.finished)} · {last.tailored} tailored</span>}
+        {problems.map((p) => <span key={p} className="scan-problem">{p}</span>)}
+      </span>
+    </button>
+  )
+}
 
 export function App() {
   const [runs, setRuns] = useState<Run[] | null>(null)
@@ -58,6 +106,7 @@ export function App() {
           {nav('settings', 'settings', 'Settings')}
           {nav('setup', 'wrench', 'Setup', issues ? <span className="count count-bad">{issues}</span> : null)}
         </nav>
+        <ScanStatus />
         <div className="side-label">History{runs?.length ? <span className="count">{runs.length}</span> : null}
           <button className={`btn btn-sm btn-icon side-refresh ${refreshing ? 'spinning' : ''}`} title="Refresh: show runs that finished since"
             aria-label="Refresh history" onClick={async () => { setRefreshing(true); await reload(); setRefreshing(false) }}>

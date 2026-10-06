@@ -94,8 +94,19 @@ export interface Detail {
 
 export type OpenTarget = 'pdf' | 'folder' | 'output' | 'log' | 'templates' | 'runs' | 'docs' | 'posting' | 'applied'
 
+/** The scan routine for the sidebar: running now, the next slot, today's missed windows, the last scan's outcome. */
+export interface RoutineStatus {
+  enabled: boolean
+  running: { label: string; since: string } | null
+  next: { label: string; at: string } | null
+  missed: string[]
+  last?: { finished: string; label: string; tailored: number; failed: number; error: string; warnings: string[] }
+  report: string
+}
+
 export interface Api {
   list(): Promise<Run[]>
+  routine(): Promise<RoutineStatus>
   tailor(template: string, jd: string, url?: string): Promise<string>
   /** a posting's text from its link (ATS APIs / the page), or why it couldn't be read; tailored = the run folder if
    *  this job id was already tailored (then nothing is fetched) */

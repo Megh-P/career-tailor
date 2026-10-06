@@ -68,12 +68,21 @@ def run_agent(agent, model, prompt, cwd, add_dirs, log, schema=SCHEMA, tools=TOO
     cmd += ["--allowedTools", *tools] if tools else ["--tools", ""]  # no tools: answer from the prompt alone
     for d in add_dirs:
         cmd += ["--add-dir", str(d)]
-    r = subprocess.run(cmd, input=prompt, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                       timeout=900, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    log.write_text(r.stdout + "\n--- stderr ---\n" + r.stderr, encoding="utf-8")
-    out = json.loads(r.stdout)
-    return out.get("structured_output") or json.loads(out.get("result") or "{}")
+    for attempt in range(3):  # a network blip ("Unable to connect to API") gets two retries a minute apart
+        r = subprocess.run(cmd, input=prompt, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=900, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        log.write_text(r.stdout + "\n--- stderr ---\n" + r.stderr, encoding="utf-8")
+        try:
+            out = json.loads(r.stdout)
+        except ValueError:
+            raise RuntimeError(f"agent gave no JSON: {(r.stderr or r.stdout).strip()[-300:]}") from None
+        if not out.get("is_error"):
+            return out.get("structured_output") or json.loads(out.get("result") or "{}")
+        err = str(out.get("result") or "agent error")
+        if "Unable to connect" not in err or attempt == 2:
+            raise RuntimeError(err[:300])
+        time.sleep(60)
 
 
 # Employers that ask applicants to remove dates of attendance/graduation (Microsoft, U.S. applicants). Their resumes

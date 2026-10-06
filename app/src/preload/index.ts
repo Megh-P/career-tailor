@@ -9,6 +9,7 @@ function on<T>(ch: string, cb: (v: T) => void) {
 
 const api: Api = {
   list: () => ipcRenderer.invoke('runs:list'),
+  routine: () => ipcRenderer.invoke('routine:status'),
   tailor: (t, jd, url) => ipcRenderer.invoke('runs:tailor', t, jd, url),
   fetchPosting: (url) => ipcRenderer.invoke('posting:fetch', url),
   applied: (id) => ipcRenderer.invoke('runs:applied', id),
