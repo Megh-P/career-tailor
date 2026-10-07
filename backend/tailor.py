@@ -12,7 +12,8 @@ import argparse, datetime, json, os, pathlib, re, shutil, subprocess, sys, time,
 
 BACKEND = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND))
-from resume import allowed_skills, ats, redact, validate_file, read, skills_from_template, parse_skills, sync  # noqa: E402
+from resume import (allowed_skills, ats, parse, redact, skill_lines, validate_file, read, skills_from_template,  # noqa: E402
+                    parse_skills, sync)
 from render import render  # noqa: E402
 
 DEFAULT_NAME_FORMAT = "{name} Resume - {company} {role}"
@@ -70,7 +71,7 @@ def run_agent(agent, model, prompt, cwd, add_dirs, log, schema=SCHEMA, tools=TOO
         cmd += ["--add-dir", str(d)]
     for attempt in range(3):  # a network blip ("Unable to connect to API") gets two retries a minute apart
         r = subprocess.run(cmd, input=prompt, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=900, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                           errors="replace", timeout=1500, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         log.write_text(r.stdout + "\n--- stderr ---\n" + r.stderr, encoding="utf-8")
         try:
@@ -104,9 +105,31 @@ def finish_locally(template, skills, job, redacted=False):
     if errs:
         raise RuntimeError("the agent's resume.md fails the ats check: " + "; ".join(errs))
     rr = render(job / "resume.md", job / "resume.pdf")
+    for _ in range(10):  # an agent cut off mid-edit can leave a skills line too long: cut from its end, as it would
+        if rr["ok"] or (rr["pages"] or 1) < 2 or not trim_skills(job / "resume.md", read(template)):
+            break
+        rr = render(job / "resume.md", job / "resume.pdf")
     if not rr["ok"]:
         raise RuntimeError(f"render failed: {rr['error'] or rr}")
     return job / "resume.pdf"
+
+
+def trim_skills(path, template_md):
+    """Drop the last skill on the longest Technical Skills line, never one the agent added for the posting (those lead
+    the line; template skills trail). -> False when nothing is left to cut."""
+    md = read(path)
+    head, sep, tail = md.partition("## Technical Skills")
+    keep = {s for its in skill_lines(parse(template_md)).values() for s in its}
+    lines = tail.split("\n")
+    rows = [(len(l), i) for i, l in enumerate(lines) if " – " in l and l.startswith("**")]
+    for _, i in sorted(rows, reverse=True):
+        label, items = lines[i].split(" – ", 1)
+        items = [s.strip() for s in items.split(",")]
+        if len(items) > 1 and items[-1] in keep:
+            lines[i] = f"{label} – {', '.join(items[:-1])}"
+            path.write_text(head + sep + "\n".join(lines), encoding="utf-8")
+            return True
+    return False
 
 
 def posting_url(job, jd):
