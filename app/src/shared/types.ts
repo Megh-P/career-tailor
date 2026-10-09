@@ -14,6 +14,8 @@ export interface Settings {
   appliedLog: string
   /** tools that agent may use, space-separated (e.g. an MCP server: mcp__claude_ai_Notion) */
   appliedTools: string
+  notionToken: string
+  notionDatabase: string
 }
 
 /** One template file in the templates folder, with its `resume.py validate` result. */

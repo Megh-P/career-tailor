@@ -152,7 +152,10 @@ async function applied(id: string): Promise<Run['applied']> {
   changed()
   let res
   try {
-    res = await py('applied.py', [file, '--instruction', s.appliedLog, '--tools', s.appliedTools], { timeout: 600_000 })
+    // Notion token and database set: applied.py writes the row through Notion's API, no agent (token via env, not argv)
+    const notion = s.notionToken && s.notionDatabase ? ['--notion', s.notionDatabase] : []
+    res = await py('applied.py', [file, ...notion, '--instruction', s.appliedLog, '--tools', s.appliedTools],
+      { timeout: 600_000, env: { NOTION_TOKEN: s.notionToken } })
   } finally {
     applying.delete(id)
     changed()

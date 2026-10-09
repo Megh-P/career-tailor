@@ -26,6 +26,8 @@ function defaults(): Settings {
     nameFormat: '{name} Resume - {company} {role}',
     appliedLog: '',
     appliedTools: '',
+    notionToken: '',
+    notionDatabase: '',
   }
 }
 
@@ -65,6 +67,8 @@ export function saveSettings(s: Settings): Settings {
     nameFormat: str(s.nameFormat, d.nameFormat),
     appliedLog: typeof s.appliedLog === 'string' ? s.appliedLog.trim() : '',
     appliedTools: str(s.appliedTools, ''),
+    notionToken: str(s.notionToken, ''),
+    notionDatabase: str(s.notionDatabase, ''),
   }
   ensureDirs()
   writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf-8')
@@ -96,13 +100,13 @@ export const PY_ENV = { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '
 export interface Proc { code: number | null; stdout: string; stderr: string }
 
 /** Run a command to completion. `shell` is needed for .cmd shims on Windows (claude). */
-export function exec(cmd: string, args: string[], opts: { shell?: boolean; onLine?: (l: string) => void; timeout?: number } = {}): Promise<Proc> {
+export function exec(cmd: string, args: string[], opts: { shell?: boolean; onLine?: (l: string) => void; timeout?: number; env?: Record<string, string> } = {}): Promise<Proc> {
   return new Promise((res) => {
     let stdout = ''
     let stderr = ''
     let child
     try {
-      child = spawn(cmd, args, { env: PY_ENV, windowsHide: true, shell: opts.shell, timeout: opts.timeout ?? 120_000 })
+      child = spawn(cmd, args, { env: { ...PY_ENV, ...opts.env }, windowsHide: true, shell: opts.shell, timeout: opts.timeout ?? 120_000 })
     } catch (e) {
       return res({ code: null, stdout, stderr: (e as Error).message })
     }
