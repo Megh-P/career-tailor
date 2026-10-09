@@ -33,7 +33,7 @@ Windows: download the installer from [GitHub Releases](https://github.com/danman
 (`Career-Tailor-Setup-<version>.exe`).
 
 macOS: download `Career-Tailor-<version>-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel) from
-[GitHub Releases](https://github.com/Megh-P/career-tailor/releases). The app is not notarized, so the first time,
+[GitHub Releases](https://github.com/danmano411/career-tailor/releases). The app is not notarized, so the first time,
 right-click it in Applications → Open, or run `xattr -cr "/Applications/Career Tailor.app"`.
 
 Linux: no prebuilt binary yet, [build from source](#build-from-source).
