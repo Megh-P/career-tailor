@@ -162,6 +162,20 @@ async function applied(id: string): Promise<Run['applied']> {
   return out
 }
 
+/** Clicked Applied by mistake: clear the mark so Applied can be pressed again. The logged entry (e.g. the Notion
+ *  row) is not touched; delete it there. */
+function unapply(id: string) {
+  if (applying.has(id)) throw new Error('This application is still being logged.')
+  const r = find(id)
+  const folder = r && folderOf(r)
+  const file = folder ? join(folder, 'run.json') : ''
+  const rec = file ? readJson(file) : null
+  if (!rec) throw new Error('This run has no run.json.')
+  delete (rec as Run).applied
+  writeFileSync(file, JSON.stringify(rec, null, 1), 'utf-8')
+  changed()
+}
+
 async function ats(templatePath: string, resumePath: string, redacted = false): Promise<Ats> {
   const skills = skillsPath()
   const r = await py('resume.py', ['ats', templatePath, resumePath, ...(existsSync(skills) ? ['--skills', skills, ...(redacted ? ['--redact'] : [])] : [])])
@@ -277,6 +291,7 @@ ipcMain.handle('posting:fetch', async (_e, url: string) => {
 })
 ipcMain.handle('runs:detail', (_e, id: string) => detail(id))
 ipcMain.handle('runs:applied', (_e, id: string) => applied(id))
+ipcMain.handle('runs:unapply', (_e, id: string) => unapply(id))
 ipcMain.handle('open', (_e, target: OpenTarget, id?: string) => open(target, id))
 ipcMain.handle('openPath', (_e, p: string) => openPath(p))
 ipcMain.handle('pick', (_e, kind: 'folder' | 'file', current: string) => pick(kind, current))

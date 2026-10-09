@@ -112,6 +112,7 @@ export interface Api {
    *  this job id was already tailored (then nothing is fetched) */
   fetchPosting(url: string): Promise<{ text: string; error: string; tailored: string }>
   applied(id: string): Promise<Run['applied']>
+  unapply(id: string): Promise<void>
   detail(id: string): Promise<Detail>
   open(target: OpenTarget, id?: string): Promise<string>
   onChange(cb: () => void): () => void
