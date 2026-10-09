@@ -93,7 +93,9 @@ notification.
   inside its window, so a laptop that was asleep at noon still scans when it wakes.
 - What counts as new: a diff, not a date filter. Each board is compared with its rows at the last successful
   fetch (boards backdate posting dates, so dates miss real additions). A failed fetch keeps the old snapshot, so
-  an outage delays postings but never skips them. The first fetch of a board only records a baseline.
+  an outage delays postings but never skips them. The first fetch of a board records a baseline and screens only the postings the board dates within the last
+  day (`backfill_hours`, default 24; SimplifyJobs-style lists and Early Career Radar have dates). A job already
+  tailored, by a scan or by you in the app, is never tailored again (matched by job id).
 - Where from: `sources`. `listings-json` (SimplifyJobs-style repos; optional `mirror`, e.g.
   `https://simplify.jobs/p/{id}`, a readable copy for career sites that need JavaScript), `markdown` (any README
   with `| [Name](link) | ... |` tables), `earlycareerradar`, plus `web_search` (an agent searches for recent
