@@ -139,13 +139,13 @@ def validate_file(path):
 
 def parse_skills(text):
     """-> ({skill: note}, {skill: note}). '## Adjacent' lines are the adjacent tier; every other '## ' section counts as
-    skills (so '## Languages' / '## Tools' layouts work), except sections whose title says 'domain', 'not listed' or
-    'ignore', which are notes, not skills."""
+    skills (so '## Languages' / '## Tools' layouts work), except sections whose title says 'domain', 'not listed',
+    'concept' or 'ignore', which are notes, not skills."""
     out, cur = {"skills": {}, "adjacent": {}}, None
     for line in text.replace("\r\n", "\n").splitlines():
         if line.startswith("## "):
             title = line[3:].strip().lower()
-            cur = None if any(w in title for w in ("domain", "not listed", "ignore")) else \
+            cur = None if any(w in title for w in ("domain", "not listed", "concept", "ignore")) else \
                 "adjacent" if title.startswith("adjacent") else "skills"
         elif line.startswith("- ") and cur:
             name, _, note = line[2:].partition(" · ")
@@ -156,9 +156,23 @@ def parse_skills(text):
 ADJ_KINDS = ("same as", "part of", "describes", "named in")  # see prompts/skill-rules.md
 
 
+def concepts(text):
+    """'## Concepts' lines, '- Data Visualization -> Matplotlib, Seaborn' (or '→'): broad terms (a field, practice, or
+    activity) that Technical Skills never lists; the tools after the arrow are what to list instead. -> {concept: tools}"""
+    out, on = {}, False
+    for line in text.replace("\r\n", "\n").splitlines():
+        if line.startswith("## "):
+            on = "concept" in line.lower()
+        elif on and line.startswith("- "):
+            name, _, tools = line[2:].replace("→", "->").partition("->")
+            out[name.strip()] = tools.strip()
+    return out
+
+
 def allowed_skills(text):
-    """-> (skills a resume may list, {adjacent skill: why it's refused}). An '## Adjacent' entry counts only when its
-    note declares one of ADJ_KINDS with evidence ("- C · part of: C++ work"); "near:", "sibling", etc. don't."""
+    """-> (skills a resume may list, {skill: why it's refused}). An '## Adjacent' entry counts only when its note
+    declares one of ADJ_KINDS with evidence ("- C · part of: C++ work"); "near:", "sibling", etc. don't. A '## Concepts'
+    term is refused wherever else it appears (any case): the resume lists the tool instead."""
     sk, adj = parse_skills(text)
     ok, refused = set(sk), {}
     for name, note in adj.items():
@@ -167,6 +181,12 @@ def allowed_skills(text):
             ok.add(name)
         else:
             refused[name] = f"Adjacent entry must be '{name} · <{' | '.join(ADJ_KINDS)}>: <evidence>' (has {note!r})"
+    con = {c.lower(): (c, tools) for c, tools in concepts(text).items()}
+    for name in [*ok, *(c for c, _ in con.values())]:
+        if name.lower() in con:
+            ok.discard(name)
+            c, tools = con[name.lower()]
+            refused[name] = f"{name} is a concept, not a tool: list {tools or 'the tool that did the work'} instead"
     return ok, refused
 
 
@@ -317,6 +337,14 @@ def selftest():
     assert ok == {"C++", "C"} and set(refused) == {"Rust", "Go"}, (ok, refused)
     errs = ats(GOOD, GOOD.replace("Python, C++", "Python, Rust, C++"), ok | {"Python", "Git"}, refused=refused)[0]
     assert len(errs) == 1 and "Adjacent entry must be" in errs[0], errs
+    # a concept is refused even when another section lists it (any case); the error names the tool to list instead
+    ok, refused = allowed_skills("## Skills\n- Matplotlib\n- data visualization\n\n## Adjacent\n"
+                                 "- Version Control · same as: Git\n\n## Concepts\n- Data Visualization → Matplotlib\n"
+                                 "- Version Control -> Git\n")
+    assert ok == {"Matplotlib"} and "list Matplotlib instead" in refused["data visualization"], (ok, refused)
+    errs = ats(GOOD, GOOD.replace("**Tools** – Git", "**Tools** – Git, Version Control"), ok | {"Python", "C++", "Git"},
+               refused=refused)[0]
+    assert errs == ["Version Control is a concept, not a tool: list Git instead"], errs
     assert parse_skills(skills_from_template(GOOD))[0].keys() == {"Python", "C++", "Git"}
     allowed = set(sk) | set(adj)
     # ats

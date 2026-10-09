@@ -35,10 +35,14 @@ ties. One per line:
 Copy `{template}` to `{job_dir}/resume.md` (read it fresh from disk; use it exactly). Only the `## Technical Skills`
 section of `resume.md` may change: no bullets, entries, titles, dates, contact lines, or section order.
 
-Sort the posting's keywords. Split combined ones ("C, C++" -> C, C++). Keep only skills: languages, frameworks,
-libraries, tools, platforms, and short technique names ("unit testing", "data structures"). Turn phrases into the short
-name a recruiter would type ("well-tested code" -> Unit Testing); keep the posting's spelling when it already is one.
-Skip domains ("fintech"), soft skills, and degrees. For each posting skill:
+Sort the posting's keywords. Split combined ones ("C, C++" -> C, C++). Technical Skills lists only tools: things with
+a proper name you install, import, run, or write in (languages, frameworks, libraries, tools, platforms, databases, and
+named protocols or query languages such as REST APIs and SQL). A broad concept (a field, practice, or activity: Data
+Visualization, Data Analysis, AI, Machine Learning, Version Control, APIs, Testing, CI/CD, DevOps) is never listed;
+list the tool that does that work instead. The skills file's `## Concepts` section maps the common ones ("Data
+Visualization -> Matplotlib", "Version Control -> Git", "APIs -> REST APIs"; "well-tested code" -> pytest). A concept
+not in that section: find the listed tool that did the work; none means it is a gap. Keep the posting's spelling when
+it already names a tool. Skip domains ("fintech"), soft skills, and degrees. For each posting skill:
 
 - Listed in `## Skills` of the skills file, or in `## Adjacent` with a kind (`same as`, `part of`, `describes`,
   `named in`): use it.
@@ -51,7 +55,9 @@ Skip domains ("fintech"), soft skills, and degrees. For each posting skill:
 ## 3. Rewrite Technical Skills (keep the same labels; lines may be reordered)
 
 - Placement: put each skill on the line whose label fits it best (languages and frameworks together, ML libraries with
-  ML, tools/databases/platforms/non-ML techniques with tools). Do not rename labels.
+  ML, tools/databases/platforms with tools). Do not rename labels.
+- A posting that asks for a concept ranks its tool: "data visualization" required puts Matplotlib where the concept
+  would have gone.
 - Line order: the line holding the top-ranked required keyword first.
 - Within a line: posting skills first in the posting's exact spelling (required, then preferred, then mentioned;
   keyword rank breaks ties), then the template's remaining skills in template order.

@@ -3,15 +3,23 @@
 The resume may list a skill the owner has not written down yet, but never one they haven't used. The test: if an
 interviewer asks "where did you use X?", the resume itself must already hold the answer.
 
-A posting skill that is not in `## Skills` of the skills file may be added only as one of these four kinds. Append it
-to `## Adjacent` as `- <Skill as the posting spells it> · <kind>: <evidence>`, then use it:
+Technical Skills lists tools, not concepts. A tool has a proper name you install, import, run, or write in: a language,
+framework, library, tool, platform, database, or named protocol or query language (REST APIs, SQL). A concept is a
+field, practice, or activity (Data Visualization, Data Analysis, AI, Machine Learning, Version Control, APIs, Unit
+Testing, CI/CD, DevOps, Statistics) and is never listed, not even when the posting asks for it word for word: list the
+tool that did that work instead (Data Visualization -> Matplotlib, Version Control -> Git, APIs -> REST APIs). The
+skills file's `## Concepts` section maps the common ones, and the ats check refuses any term listed there. Never add a
+concept to `## Skills` or `## Adjacent`; a new one goes in `## Concepts` as `- <Concept> -> <tools>`.
 
-- `same as`: another spelling or name of a listed skill. `Postgres · same as: PostgreSQL`, `LLMs · same as: LLM Integration`.
-- `part of`: using a listed skill means using this one. `C · part of: C++ (C/C++ repositories)`, `SQL · part of: SQLite`,
+A posting tool that is not in `## Skills` of the skills file may be added only as one of these four kinds. Append it
+to `## Adjacent` as `- <Tool as the posting spells it> · <kind>: <evidence>`, then use it:
+
+- `same as`: another spelling or name of a listed tool. `Postgres · same as: PostgreSQL`, `React.js · same as: React`.
+- `part of`: using a listed tool means using this one. `C · part of: C++ (C/C++ repositories)`, `SQL · part of: SQLite`,
   `JavaScript · part of: TypeScript`, `GitHub · part of: Git and GitHub Actions CI`.
-- `describes`: a technique or umbrella term for work a bullet already shows. `Unit Testing · describes: pytest suites (Tycho)`,
-  `Web Scraping · describes: scraped TransLoc GPS data (StingerDelay)`.
-- `named in`: the tool or term appears in a bullet or entry header but not in Technical Skills. `Cursor · named in: Tycho bullet`.
+- `describes`: a named protocol or standard the work already uses. `REST APIs · describes: FastAPI server`,
+  `Bash · describes: CLI tooling and CI scripts`.
+- `named in`: the tool appears in a bullet or entry header but not in Technical Skills. `Cursor · named in: Tycho bullet`.
 
 The evidence must point at real text in the template (or a skill already in `## Skills`). If you can't quote it, it
 isn't evidence.
