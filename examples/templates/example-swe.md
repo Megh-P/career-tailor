@@ -29,5 +29,4 @@ alex.rivera@example.com | (555) 010-4721 | linkedin.com/in/alexrivera-example | 
 
 ## Technical Skills
 **Languages & Frameworks** – Python, C++, TypeScript, JavaScript, Java, SQL, React, Node.js, React Native
-**Tools & Platforms** – Git, Docker, PostgreSQL, SQLite, Kafka, GitHub Actions, Linux, LLVM
-**Concepts** – Distributed Systems, Data Structures, Algorithms, Compilers, REST APIs, Unit Testing, CI/CD
+**Tools & Platforms** – Git, Docker, PostgreSQL, SQLite, Kafka, GitHub Actions, Linux, LLVM, REST APIs

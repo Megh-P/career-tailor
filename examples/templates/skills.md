@@ -9,6 +9,11 @@ Adjacent: skills you did use but haven't written down, each with a kind and the 
 shows), `named in` (the tool appears in a bullet). Never a different tool you haven't used: Go is not
 "near" C++. See backend/prompts/skill-rules.md.
 
+Concepts: broad fields and practices (Unit Testing, CI/CD, Data Pipelines) are never listed, only the tool that did
+the work. Each line maps one to its tools; the ats check refuses the concept and its error names the tool.
+Techniques (only on: <label>): narrower methods allowed only on that skill line, e.g. `## Techniques (only on:
+ML/AI)` with `- Deep Learning · evidence` for a resume that has an ML/AI line. This example has none.
+
 Anything not in either list is never added. Edit freely.
 
 ## Skills
@@ -29,16 +34,20 @@ Anything not in either list is never added. Edit freely.
 - GitHub Actions · Brightwave CI migration check
 - Linux · daily development
 - LLVM · Quill backend
-- Distributed Systems · coursework, Kafka pipeline
-- Data Structures · TA role
-- Algorithms · TA role, coursework
-- Compilers · Quill
 - REST APIs · Brightwave, TrailSync
-- Unit Testing · Brightwave integration tests
-- CI/CD · GitHub Actions
 
 ## Adjacent
 - Postgres · same as: PostgreSQL
 - C · part of: C++ (Quill compiler)
-- Data Pipelines · describes: Kafka inventory pipeline at Brightwave
-- Event Streaming · describes: Kafka inventory pipeline at Brightwave
+
+## Concepts
+- Unit Testing ->
+- CI/CD -> GitHub Actions
+- Version Control -> Git
+- Data Pipelines -> Kafka
+- Event Streaming -> Kafka
+- Databases -> PostgreSQL, SQLite
+- Compilers -> LLVM
+- Distributed Systems -> Kafka
+- Data Structures ->
+- Algorithms ->

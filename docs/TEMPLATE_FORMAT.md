@@ -38,7 +38,7 @@ alex.rivera@example.com | (555) 010-4721 | github.com/alexrivera-example
   Put it **last**: it is the only section the app edits, and the diff reads best that way.
 - Technical Skills contains skill lines, one per category, in the form `**Label** – item, item, item`.
   The separator is an en dash (`–`); `-` and `:` are also accepted. Items are comma separated.
-- Keep the labels you want (for example `Languages & Frameworks`, `Tools & Platforms`, `Concepts`). The tailoring
+- Keep the labels you want (for example `Languages & Frameworks`, `Tools & Platforms`, `ML/AI`). The tailoring
   agent may add, drop, and reorder items inside a line but cannot rename, add, or remove labels.
 - `### ` entries should have a `||` date. A missing one is a warning, not an error.
 
@@ -94,14 +94,21 @@ one is generated from your template's skill lines.
   you; only the skill name is matched.
 - `## Adjacent`: skills you did use but haven't listed, as `- Skill · <kind>: <evidence>`. Kinds: `same as` (another
   name for a listed skill), `part of` (using a listed skill means using this one: C with C++, SQL with SQLite),
-  `describes` (an umbrella term for work a bullet shows: Unit Testing for pytest suites), `named in` (the tool appears
-  in a bullet). The agent may add entries when a job asks, and reports each one. A different tool you haven't used
-  (Go because of C++, TensorFlow because of PyTorch) is never allowed, and an entry without a kind is refused by the
-  ats check. The full rules the agent follows: `backend/prompts/skill-rules.md`.
+  `describes` (a named protocol or standard the work uses: REST APIs for a FastAPI server), `named in` (the tool
+  appears in a bullet). The agent may add entries when a job asks, and reports each one. A different tool you haven't
+  used (Go because of C++, TensorFlow because of PyTorch) is never allowed, and an entry without a kind is refused by
+  the ats check. The full rules the agent follows: `backend/prompts/skill-rules.md`.
+- `## Concepts`: Technical Skills lists tools, not concepts. A field or practice (Data Visualization, Version
+  Control, Unit Testing, CI/CD, APIs) maps to the tool you used for it, one per line: `- Data Visualization ->
+  Matplotlib`. When a posting asks for the concept, the agent lists the tool; the ats check refuses the concept itself
+  (any case, even if another section lists it). Nothing after the arrow means no tool covers it: a gap. Use it for
+  terms that are too broad (Machine Learning, AI) or that would have to sit on a tools line.
+- `## Techniques (only on: ML/AI)`: field-specific techniques you used (`- Deep Learning · <evidence>`). Allowed, but
+  only on the skill line whose label contains the text after `only on:`; the ats check refuses one anywhere else.
 
 You can split skills into several `##` sections (`## Languages`, `## Tools`, ...); every section counts as skills
-except `## Adjacent`, and except sections whose title contains "domain", "not listed", or "ignore" (use those for
-notes). Anything in neither list is never added.
+except `## Adjacent`, `## Concepts` and `## Techniques`, and except sections whose title contains "domain", "not listed", or "ignore"
+(use those for notes). Anything in neither list is never added.
 
 ## Keep your own layout
 
