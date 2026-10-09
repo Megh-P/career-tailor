@@ -35,17 +35,18 @@ ties. One per line:
 Copy `{template}` to `{job_dir}/resume.md` (read it fresh from disk; use it exactly). Only the `## Technical Skills`
 section of `resume.md` may change: no bullets, entries, titles, dates, contact lines, or section order.
 
-Sort the posting's keywords. Split combined ones ("C, C++" -> C, C++). Technical Skills lists only tools: things with
-a proper name you install, import, run, or write in (languages, frameworks, libraries, tools, platforms, databases, and
-named protocols or query languages such as REST APIs and SQL). A broad concept (a field, practice, or activity: Data
-Visualization, Data Analysis, AI, Machine Learning, Version Control, APIs, Testing, CI/CD, DevOps) is never listed;
-list the tool that does that work instead. The skills file's `## Concepts` section maps the common ones ("Data
+Sort the posting's keywords. Split combined ones ("C, C++" -> C, C++). Technical Skills holds tools (things with a
+proper name you install, import, run, or write in: languages, frameworks, libraries, tools, platforms, databases, named
+protocols such as REST APIs and SQL) and, on the ML/AI line only, field-specific techniques from the skills file's
+`## Techniques` section (Deep Learning, Neural Networks, RAG, Fine-Tuning). A broad concept (Machine Learning, AI,
+Data Visualization, Data Analysis, Data Science, Version Control, APIs, Testing, CI/CD, DevOps) is never listed; list
+the tool that does that work instead. The skills file's `## Concepts` section maps the common ones ("Data
 Visualization -> Matplotlib", "Version Control -> Git", "APIs -> REST APIs"; "well-tested code" -> pytest). A concept
 not in that section: find the listed tool that did the work; none means it is a gap. Keep the posting's spelling when
 it already names a tool. Skip domains ("fintech"), soft skills, and degrees. For each posting skill:
 
 - Listed in `## Skills` of the skills file, or in `## Adjacent` with a kind (`same as`, `part of`, `describes`,
-  `named in`): use it.
+  `named in`): use it. Listed in `## Techniques (only on: <line>)`: use it, on that line only.
 - Not listed: it may be added only if it is one of the four kinds in "Rules for adding a skill" at the end of this
   prompt. Then append `- <posting spelling> · <kind>: <evidence>` to `## Adjacent` in the skills file, use it, and
   report it under new_adjacent. Adjacent entries written as `near:` or without evidence don't count; the ats check
@@ -55,7 +56,8 @@ it already names a tool. Skip domains ("fintech"), soft skills, and degrees. For
 ## 3. Rewrite Technical Skills (keep the same labels; lines may be reordered)
 
 - Placement: put each skill on the line whose label fits it best (languages and frameworks together, ML libraries with
-  ML, tools/databases/platforms with tools). Do not rename labels.
+  ML, tools/databases/platforms with tools). Techniques go only on the line their section names (ML/AI); a concept or
+  technique never goes on Databases & Tools. Do not rename labels.
 - A posting that asks for a concept ranks its tool: "data visualization" required puts Matplotlib where the concept
   would have gone.
 - Line order: the line holding the top-ranked required keyword first.

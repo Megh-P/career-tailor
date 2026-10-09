@@ -101,10 +101,13 @@ one is generated from your template's skill lines.
 - `## Concepts`: Technical Skills lists tools, not concepts. A field or practice (Data Visualization, Version
   Control, Unit Testing, CI/CD, APIs) maps to the tool you used for it, one per line: `- Data Visualization ->
   Matplotlib`. When a posting asks for the concept, the agent lists the tool; the ats check refuses the concept itself
-  (any case, even if another section lists it). Nothing after the arrow means no tool covers it: a gap.
+  (any case, even if another section lists it). Nothing after the arrow means no tool covers it: a gap. Use it for
+  terms that are too broad (Machine Learning, AI) or that would have to sit on a tools line.
+- `## Techniques (only on: ML/AI)`: field-specific techniques you used (`- Deep Learning · <evidence>`). Allowed, but
+  only on the skill line whose label contains the text after `only on:`; the ats check refuses one anywhere else.
 
 You can split skills into several `##` sections (`## Languages`, `## Tools`, ...); every section counts as skills
-except `## Adjacent` and `## Concepts`, and except sections whose title contains "domain", "not listed", or "ignore"
+except `## Adjacent`, `## Concepts` and `## Techniques`, and except sections whose title contains "domain", "not listed", or "ignore"
 (use those for notes). Anything in neither list is never added.
 
 ## Convert your existing resume

@@ -140,12 +140,12 @@ def validate_file(path):
 def parse_skills(text):
     """-> ({skill: note}, {skill: note}). '## Adjacent' lines are the adjacent tier; every other '## ' section counts as
     skills (so '## Languages' / '## Tools' layouts work), except sections whose title says 'domain', 'not listed',
-    'concept' or 'ignore', which are notes, not skills."""
+    'concept', 'technique' or 'ignore' (notes, or read by concepts() / techniques())."""
     out, cur = {"skills": {}, "adjacent": {}}, None
     for line in text.replace("\r\n", "\n").splitlines():
         if line.startswith("## "):
             title = line[3:].strip().lower()
-            cur = None if any(w in title for w in ("domain", "not listed", "concept", "ignore")) else \
+            cur = None if any(w in title for w in ("domain", "not listed", "concept", "technique", "ignore")) else \
                 "adjacent" if title.startswith("adjacent") else "skills"
         elif line.startswith("- ") and cur:
             name, _, note = line[2:].partition(" · ")
@@ -169,12 +169,34 @@ def concepts(text):
     return out
 
 
+def techniques(text):
+    """'## Techniques (only on: ML/AI)' lines, '- Deep Learning · evidence': a field-specific technique, allowed but only
+    on the skill line whose label contains the text after 'only on:'. -> {technique: label}"""
+    out, label = {}, None
+    for line in text.replace("\r\n", "\n").splitlines():
+        if line.startswith("## "):
+            m = re.search(r"technique.*only on:\s*([^)]+)", line, re.I)
+            label = m.group(1).strip() if m else None
+        elif label and line.startswith("- "):
+            out[line[2:].partition(" · ")[0].strip()] = label
+    return out
+
+
+def misplaced(new_md, placement):
+    """Techniques on the wrong skill line. placement: techniques() -> ["Deep Learning: ... ML/AI line"]"""
+    where = {k.lower(): v for k, v in placement.items()}
+    return [f"{i} is a technique, not a tool: it goes on the {where[i.lower()]} line, not {lab}"
+            for lab, items in skill_lines(parse(new_md)).items() for i in items
+            if i.lower() in where and where[i.lower()].lower() not in lab.lower()]
+
+
 def allowed_skills(text):
     """-> (skills a resume may list, {skill: why it's refused}). An '## Adjacent' entry counts only when its note
     declares one of ADJ_KINDS with evidence ("- C · part of: C++ work"); "near:", "sibling", etc. don't. A '## Concepts'
-    term is refused wherever else it appears (any case): the resume lists the tool instead."""
+    term is refused wherever else it appears (any case): the resume lists the tool instead. '## Techniques' entries
+    are allowed (where they may go: misplaced())."""
     sk, adj = parse_skills(text)
-    ok, refused = set(sk), {}
+    ok, refused = set(sk) | set(techniques(text)), {}
     for name, note in adj.items():
         kind, _, evidence = note.partition(":")
         if kind.strip().lower() in ADJ_KINDS and evidence.strip():
@@ -220,9 +242,10 @@ def redact(md):
     return "\n".join(out)
 
 
-def ats(template_md, new_md, allowed, redacted=False, refused=None):
+def ats(template_md, new_md, allowed, redacted=False, refused=None, placement=None):
     """-> (errors, added, dropped, reorders). Everything but Technical Skills must equal the template (with its
-    Education dates removed when redacted: the one other change a resume may carry, declared, never silent)."""
+    Education dates removed when redacted: the one other change a resume may carry, declared, never silent).
+    placement (techniques()): a technique must sit on its line."""
     t, n, errs = parse(redact(template_md) if redacted else template_md), parse(new_md), []
     if t["head"] != n["head"]:
         errs.append("header/contact lines changed")
@@ -237,6 +260,7 @@ def ats(template_md, new_md, allowed, redacted=False, refused=None):
     flat = [i for items in ns.values() for i in items]
     errs += [f"duplicate skill: {i}" for i in sorted({i for i in flat if flat.count(i) > 1})]
     errs += [(refused or {}).get(i, f"not in skills file: {i}") for i in flat if i not in allowed]
+    errs += misplaced(new_md, placement or {})
     old = [i for items in ts.values() for i in items]
     added, dropped = [i for i in flat if i not in old], [i for i in old if i not in flat]
     reorders = [{"label": lab, "before": ts.get(lab, []), "after": items} for lab, items in ns.items()
@@ -345,6 +369,15 @@ def selftest():
     errs = ats(GOOD, GOOD.replace("**Tools** – Git", "**Tools** – Git, Version Control"), ok | {"Python", "C++", "Git"},
                refused=refused)[0]
     assert errs == ["Version Control is a concept, not a tool: list Git instead"], errs
+    # a technique is allowed, but only on its line (Deep Learning on ML/AI, never on Tools)
+    tk = "## Skills\n- PyTorch\n\n## Techniques (only on: ML/AI)\n- Deep Learning · PyTorch nets\n"
+    ok, refused = allowed_skills(tk)
+    ml = GOOD.replace("**Tools** – Git", "**Tools** – Git\n**ML/AI** – PyTorch")
+    assert "Deep Learning" in ok and ats(ml, ml.replace("– PyTorch", "– Deep Learning, PyTorch"), ok | {"Python", "C++", "Git"},
+                                         refused=refused, placement=techniques(tk))[0] == []
+    errs = ats(ml, ml.replace("– Git", "– Git, Deep Learning"), ok | {"Python", "C++", "Git"}, refused=refused,
+               placement=techniques(tk))[0]
+    assert errs == ["Deep Learning is a technique, not a tool: it goes on the ML/AI line, not Tools"], errs
     assert parse_skills(skills_from_template(GOOD))[0].keys() == {"Python", "C++", "Git"}
     allowed = set(sk) | set(adj)
     # ats
@@ -389,8 +422,10 @@ def main(a):
         emit(res, res["ok"])
     elif a[:1] == ["ats"] and len(a) in (5, 6) and a[3] == "--skills" and a[5:] in ([], ["--redact"]):
         try:
-            allowed, refused = allowed_skills(read(a[4]))
-            errs, added, dropped, reo = ats(read(a[1]), read(a[2]), allowed, a[5:] == ["--redact"], refused)
+            sk = read(a[4])
+            allowed, refused = allowed_skills(sk)
+            errs, added, dropped, reo = ats(read(a[1]), read(a[2]), allowed, a[5:] == ["--redact"], refused,
+                                            techniques(sk))
         except (OSError, UnicodeDecodeError, ValueError) as ex:
             emit({"ok": False, "errors": [f"{type(ex).__name__}: {ex}"], "added": [], "dropped": [], "reorders": []}, False)
         emit({"ok": not errs, "errors": errs, "added": added, "dropped": dropped, "reorders": reo}, not errs)

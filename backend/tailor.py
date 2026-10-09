@@ -12,8 +12,8 @@ import argparse, datetime, json, os, pathlib, re, shutil, subprocess, sys, time,
 
 BACKEND = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND))
-from resume import (allowed_skills, ats, parse, redact, skill_lines, validate_file, read, skills_from_template,  # noqa: E402
-                    parse_skills, sync)
+from resume import (allowed_skills, ats, parse, redact, skill_lines, techniques, validate_file, read,  # noqa: E402
+                    skills_from_template, parse_skills, sync)
 from render import render  # noqa: E402
 
 DEFAULT_NAME_FORMAT = "{name} Resume - {company} {role}"
@@ -101,7 +101,7 @@ def finish_locally(template, skills, job, redacted=False):
     if redacted:
         (job / "resume.md").write_text(redact(read(job / "resume.md")), encoding="utf-8")
     allowed, refused = allowed_skills(read(skills))
-    errs = ats(read(template), read(job / "resume.md"), allowed, redacted, refused)[0]
+    errs = ats(read(template), read(job / "resume.md"), allowed, redacted, refused, techniques(read(skills)))[0]
     if errs:
         raise RuntimeError("the agent's resume.md fails the ats check: " + "; ".join(errs))
     rr = render(job / "resume.md", job / "resume.pdf")

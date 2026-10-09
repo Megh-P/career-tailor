@@ -3,13 +3,22 @@
 The resume may list a skill the owner has not written down yet, but never one they haven't used. The test: if an
 interviewer asks "where did you use X?", the resume itself must already hold the answer.
 
-Technical Skills lists tools, not concepts. A tool has a proper name you install, import, run, or write in: a language,
-framework, library, tool, platform, database, or named protocol or query language (REST APIs, SQL). A concept is a
-field, practice, or activity (Data Visualization, Data Analysis, AI, Machine Learning, Version Control, APIs, Unit
-Testing, CI/CD, DevOps, Statistics) and is never listed, not even when the posting asks for it word for word: list the
-tool that did that work instead (Data Visualization -> Matplotlib, Version Control -> Git, APIs -> REST APIs). The
-skills file's `## Concepts` section maps the common ones, and the ats check refuses any term listed there. Never add a
-concept to `## Skills` or `## Adjacent`; a new one goes in `## Concepts` as `- <Concept> -> <tools>`.
+Technical Skills holds three tiers:
+
+1. Tools, on any fitting line. A tool has a proper name you install, import, run, or write in: a language, framework,
+   library, tool, platform, database, or named protocol or query language (REST APIs, SQL).
+2. Field-specific techniques, only on their own line: Deep Learning, Neural Networks, RAG, Fine-Tuning, AI Agents go
+   on the ML/AI line, never on Databases & Tools or Languages. The skills file's `## Techniques (only on: <line>)`
+   section lists them; the ats check refuses one on another line.
+3. Broad concepts, never listed: a field or practice too wide to say anything, or one that isn't a tool but would
+   have to sit on a tools line (Machine Learning or AI on the ML/AI line, Data Visualization, Data Analysis, Data
+   Science, Version Control, APIs, Unit Testing, CI/CD, DevOps, Statistics). Not even when the posting asks for it word
+   for word: list the tool that did that work instead (Data Visualization -> Matplotlib, Version Control -> Git, APIs
+   -> REST APIs). The skills file's `## Concepts` section maps the common ones; the ats check refuses them.
+
+A posting term that is neither a listed tool nor a listed technique: if it names a narrow method of the ML/AI field
+that a bullet shows being done, add it to `## Techniques`; if it is broad, add it to `## Concepts` as
+`- <Concept> -> <tools>` and list the tool. Never put a technique or concept in `## Skills` or `## Adjacent`.
 
 A posting tool that is not in `## Skills` of the skills file may be added only as one of these four kinds. Append it
 to `## Adjacent` as `- <Tool as the posting spells it> · <kind>: <evidence>`, then use it:

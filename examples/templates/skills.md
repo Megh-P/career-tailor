@@ -9,8 +9,10 @@ Adjacent: skills you did use but haven't written down, each with a kind and the 
 shows), `named in` (the tool appears in a bullet). Never a different tool you haven't used: Go is not
 "near" C++. See backend/prompts/skill-rules.md.
 
-Concepts: fields and practices (Unit Testing, CI/CD, Data Pipelines) are never listed, only the tool that did the
-work. Each line maps one to its tools; the ats check refuses the concept and its error names the tool.
+Concepts: broad fields and practices (Unit Testing, CI/CD, Data Pipelines) are never listed, only the tool that did
+the work. Each line maps one to its tools; the ats check refuses the concept and its error names the tool.
+Techniques (only on: <label>): narrower methods allowed only on that skill line, e.g. `## Techniques (only on:
+ML/AI)` with `- Deep Learning · evidence` for a resume that has an ML/AI line. This example has none.
 
 Anything not in either list is never added. Edit freely.
 
