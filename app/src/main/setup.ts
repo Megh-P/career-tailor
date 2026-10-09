@@ -1,6 +1,6 @@
 // Settings, backend location, python helper, template discovery/validation, preflight checks.
 import { app } from 'electron'
-import { spawn } from 'child_process'
+import { execFileSync, spawn } from 'child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from 'fs'
 import { dirname, join, resolve } from 'path'
 import type { Check, Settings, TemplateInfo } from '../shared/types'
@@ -80,6 +80,16 @@ function ensureDirs() {
 
 /** The skills file passed to tailor.py and ats; tailor.py creates it from the template if it doesn't exist. */
 export const skillsPath = () => settings.skillsFile || join(settings.templatesDir, 'skills.md')
+
+// macOS apps opened from Finder get launchd's bare PATH (/usr/bin:/bin:...), which misses claude, Homebrew python3
+// and anything else the user's shell adds: take PATH from a login shell, as a terminal would see it.
+if (process.platform === 'darwin') {
+  try {
+    const out = execFileSync(process.env.SHELL || '/bin/zsh', ['-ilc', 'printf "__PATH__%s" "$PATH"'], { encoding: 'utf-8', timeout: 10_000 })
+    const shellPath = out.split('__PATH__').pop()?.trim()
+    if (shellPath) process.env.PATH = [...new Set([...shellPath.split(':'), ...(process.env.PATH ?? '').split(':')])].filter(Boolean).join(':')
+  } catch { /* keep the inherited PATH */ }
+}
 
 export const PY_ENV = { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' }
 

@@ -32,7 +32,11 @@ job description + your template.md + skills.md
 Windows: download the installer from [GitHub Releases](https://github.com/danmano411/career-tailor/releases)
 (`Career-Tailor-Setup-<version>.exe`).
 
-macOS and Linux: no prebuilt binary yet, [build from source](#build-from-source).
+macOS: download `Career-Tailor-<version>-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel) from
+[GitHub Releases](https://github.com/Megh-P/career-tailor/releases). The app is not notarized, so the first time,
+right-click it in Applications → Open, or run `xattr -cr "/Applications/Career Tailor.app"`.
+
+Linux: no prebuilt binary yet, [build from source](#build-from-source).
 
 ## Requirements
 
@@ -132,6 +136,7 @@ cd app
 npm install
 npm run build
 npm run package     # Windows installer in app/dist
+npm run package:mac # macOS .dmg and .zip (arm64 + x64) in app/dist
 ```
 
 Backend tests:

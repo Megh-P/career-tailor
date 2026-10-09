@@ -300,13 +300,17 @@ app.setAppUserModelId('com.danmano411.careertailor') // Windows toasts need it t
 app.whenReady().then(() => {
   loadSettings()
   watchTemplates((t) => win?.webContents.send('templates:changed', t))
-  Menu.setApplicationMenu(null)
+  // macOS needs an app menu for Cmd+C/V/Q and the other edit shortcuts; Windows shows none
+  Menu.setApplicationMenu(process.platform === 'darwin'
+    ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }])
+    : null)
   startRoutine(showWindow, changed)
   // started at login: stay in the tray; the scan routine runs without a window
   if (!process.argv.includes('--background')) showWindow()
 })
 // Closing the window keeps the app (and its scan routine) running in the tray. Ending it: Task Manager.
 app.on('window-all-closed', () => {})
+app.on('activate', () => showWindow()) // macOS: clicking the Dock icon reopens the window
 
 function showWindow() {
   if (win) {
